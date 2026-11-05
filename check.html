@@ -2715,9 +2715,19 @@ App.dlP = null;
 function initDownloads() { try { App.dlP = (window.claude && typeof window.claude.use === 'function') ? window.claude.use('downloads') : Promise.resolve(null); } catch (e) { App.dlP = Promise.resolve(null); } }
 async function saveFile(filename, data) {
   let dl = null; try { dl = await App.dlP; } catch (e) { dl = null; }
-  if (!dl) { fallbackShow(filename, data); return; }
+  if (!dl) { if (!browserDownload(filename, data)) fallbackShow(filename, data); return; }
   try { await dl.save({ filename, data }); App.toast('Saved ' + filename); }
   catch (err) { if (err && err.code === 'declined') return; if (err && err.code === 'rate_limited') { App.toast('Another save prompt is open — try again in a moment.'); return; } fallbackShow(filename, data); }
+}
+function browserDownload(filename, data) {
+  try {
+    const type = /\.html$/.test(filename) ? 'text/html' : /\.csv$/.test(filename) ? 'text/csv' : /\.json$/.test(filename) ? 'application/json' : 'text/plain';
+    const url = URL.createObjectURL(new Blob([data], { type: type + ';charset=utf-8' }));
+    const a = Object.assign(document.createElement('a'), { href: url, download: filename });
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    App.toast('Saved ' + filename); return true;
+  } catch (e) { return false; }
 }
 function fallbackShow(filename, data) {
   modal('Copy ' + filename, `<p class="muted">File downloads are not available in this view. Copy the contents below and paste them into a file named <b>${esc(filename)}</b>, or use Print.</p><textarea rows="14" readonly style="font-family:monospace;font-size:12px">${esc(data)}</textarea>`, [{ label: 'Select all', fn: (bk) => { const t = bk.querySelector('textarea'); t.focus(); t.select(); return true; } }]);
