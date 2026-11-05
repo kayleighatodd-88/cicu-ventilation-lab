@@ -378,12 +378,12 @@ const MODEL_NOTES = [
   'SIMV: a mandatory breath is due every 60/rate seconds; a patient trigger in the last 30% of the SIMV period delivers a synchronized mandatory breath, earlier triggers receive PS.',
   'Automode: switches from controlled to supported after two consecutive patient-triggered breaths and back to controlled when no trigger occurs within the trigger timeout. The real Servo-u timeout adapts over successive breaths; here it is fixed at the set value.',
   'Backup ventilation (PS/CPAP, NAVA): starts when the apnea time elapses; returns to support after two consecutive patient-triggered breaths. NAVA falls back to pneumatically triggered PS when the Edi signal is lost.',
-  'Leak: orifice-type leak at the airway (flow ∝ √pressure). VTi includes leak, VTe does not. Leak % = (VTi − VTe)/VTi.',
+  'Leak: orifice-type leak at the airway (flow ∝ √pressure). VTi includes leak, VTe does not. Leak % = (VTi − VTe)/VTi. Which volume the real Servo-u uses for PRVC/VS regulation during a leak has not been verified against Getinge documentation.',
   'CO2: whole-body CO2 store ≈0.6 mL/kg/mmHg; elimination = alveolar ventilation × PaCO2/0.863. Alveolar ventilation uses delivered patient VT minus anatomic/apparatus dead space, reduced by alveolar dead space (lung disease, low pulmonary blood flow, overdistension).',
   'O2: alveolar oxygen is a mass balance of ventilation and uptake over an FRC store, so apnea and disconnection desaturate realistically fast in small children. Arterial content uses the shunt equation (biventricular) or mixing equations (Glenn, Fontan, parallel circulation). Saturation uses the Severinghaus curve.',
-  'Hemodynamics: lumped steady-state model with time constants. Mean intrathoracic pressure (a compliance-dependent fraction of mean airway pressure plus auto-PEEP) reduces venous return according to hemodynamic reserve, reduces LV afterload when LV function is poor, impedes passive (Glenn/Fontan) pulmonary blood flow, and raises PVR at low and high lung volumes.',
-  'PVR responds to alveolar hypoxia, acidosis, hypercapnia, lung volume, stimulation and inhaled nitric oxide, scaled by a reactivity setting. RV output becomes afterload-limited when PVR exceeds RV capacity.',
-  'Acid–base: Henderson–Hasselbalch with acute CO2 buffering (+1 mEq/L HCO3 per 10 mmHg). Lactate rises when oxygen extraction exceeds ≈40% and lowers HCO3. Renal compensation is not modelled (cases set baseline HCO3 where chronic compensation applies).',
+  'Hemodynamics: lumped steady-state model with time constants. Mean intrathoracic pressure (a compliance-dependent fraction of mean airway pressure plus auto-PEEP) reduces venous return according to hemodynamic reserve, reduces LV afterload when LV function is poor, impedes passive (Glenn/Fontan) pulmonary blood flow, and raises PVR at low and high lung volumes. Intrathoracic pressure includes auto-PEEP averaged over the last four breaths (auto-PEEP is counted only when expiratory flow is still present at the next breath). After a Glenn, high SVC pressure diverts part of SVC flow away from the lungs (a stand-in for decompressing collaterals), so high Pmean lowers SpO2.',
+  'PVR responds to alveolar hypoxia, acidosis, hypercapnia, lung volume, stimulation and inhaled nitric oxide, scaled by a reactivity setting. In parallel (shunt-dependent) circulation, hyperoxia and alkalosis lower PVR steeply and Qp:Qs follows the SVR/PVR ratio, so oxygen and hyperventilation cause systemic steal. RV output becomes afterload-limited when PVR exceeds RV capacity.',
+  'Acid–base: Henderson–Hasselbalch with acute CO2 buffering (+1 mEq/L HCO3 per 10 mmHg). Lactate rises when oxygen extraction exceeds ≈40% or systemic flow falls below ≈78% of baseline (regional hypoperfusion), and lowers HCO3. Renal compensation is not modelled (cases set baseline HCO3 where chronic compensation applies).',
   'Not modelled: gas compression/circuit compliance, humidity, flow-dependent tube resistance, regional lung mechanics, drug pharmacokinetics, renal compensation, and the proprietary Getinge software behavior.'
 ];
 
@@ -770,7 +770,7 @@ class Engine {
   finalizeBreath() {
     const b = this.cur; if (!b) return;
     b.te = this.t - this.expStart; b.endExpQ = this.Q; b.endExpQmeas = this.Qmeas;
-    b.autoPEEP = Math.max(0, this.pel(this.V) - this.set.peep);
+    b.autoPEEP = this.Q < 0 ? Math.max(0, this.pel(this.V) - this.set.peep) : 0; // only while still exhaling, not mid patient effort
     b.VTpat = Math.max(0, b.Vmax - b.Vstart);
     b.pmean = b.dur > 0 ? b.pawInt / b.dur : this.set.peep;
     b.end = this.t; b.spont = !b.mand && b.kind !== 'bag';
@@ -959,7 +959,7 @@ class Engine {
     g.Sv = clamp(Cv / (1.36 * p.hb), 0.03, 0.95);
     const DO2 = 10 * Qs * Ca; g.O2ER = clamp(VO2 / DO2, 0, 1);
     // ---- lactate & acid–base
-    const prod = 0.012 * Math.max(0, g.O2ER - 0.40) + 0.02 * Math.max(0, 0.55 - g.SaO2);
+    const prod = 0.012 * Math.max(0, g.O2ER - 0.40) + 0.02 * Math.max(0, 0.55 - g.SaO2) + 0.03 * Math.max(0, 0.78 - Qs / base.CO0); // last term: regional hypoperfusion
     const clear = 0.0025 * (g.lac - 0.8) * clamp(Qs / base.CO0, 0.3, 1.2);
     g.lac = clamp(g.lac + (prod - clear) * dtp, 0.5, 20);
     g.HCO3 = p.hco3Base - 0.95 * (g.lac - 1) + 0.1 * (g.PaCO2 - 40);
@@ -971,7 +971,7 @@ class Engine {
     g.EtCO2 = ease(g.EtCO2, etTarget, dtp, 4);
     // ---- NIRS
     const cbf = p.cardiac === 'glenn' ? 1 : clamp(1 + 0.02 * (g.PaCO2 - 40), 0.6, 1.5);
-    const flowC = Math.pow(clamp(Qs / base.CO0, 0.1, 1.6), 0.4) * cbf;
+    const flowC = Math.pow(clamp(Qs / base.CO0, 0.1, 1.6), p.cardiac === 'parallel' ? 0.9 : 0.4) * cbf; // diastolic run-off steals cerebral flow
     const erC = clamp(0.32 / flowC, 0.1, 0.9);
     g.rSO2c = ease(g.rSO2c, 100 * (0.25 * g.SaO2 + 0.75 * g.SaO2 * (1 - erC)), dtp, 10);
     const erS = clamp(0.28 / Math.pow(clamp(Qs / base.CO0, 0.1, 1.6), 0.6), 0.1, 0.9);
@@ -1012,13 +1012,15 @@ class Engine {
     const p = this.phys, g = this.g, h = this.h, base = this.base;
     const Crel = this.Ceff / base.Cnorm;
     const trans = clamp(0.25 + 0.3 * Crel, 0.2, 0.6);
-    const autoP = this.breaths.length ? this.breaths[this.breaths.length - 1].autoPEEP || 0 : 0;
+    const lb = this.breaths.slice(-4); const autoP = lb.length ? lb.reduce((a, b) => a + (b.autoPEEP || 0), 0) / lb.length : 0;
     let ITP = this.PmeanAvg * trans + 0.6 * autoP + (p.ptx === 2 ? 14 : 0) - 1.5 * this.spontFraction * clamp(this.driveEff, 0, 1);
     this.ITP = ITP;
     // PVR
     const react = p.pvReact;
     let pvr = p.pvrBase * (1 + react * (clamp((70 - g.PAO2) / 40, 0, 1.6) * 1.4 + clamp((7.38 - g.pH) / 0.1, -0.6, 2.5) * 0.5 + clamp((g.PaCO2 - 45) / 15, 0, 2) * 0.3 + 1.2 * p.stim) - react * 0.25 * clamp((g.PAO2 - 100) / 300, 0, 1));
     pvr *= (1 + 0.5 * g.U + 0.5 * clamp((this.PmeanAvg - 14) / 10, 0, 1.5)) * (p.ino ? 0.6 : 1);
+    // shunt-dependent neonates: hyperoxia and alkalosis drop PVR steeply (overcirculation)
+    if (p.cardiac === 'parallel') { const k = clamp(0.5 + react / 0.6, 0.5, 2); pvr *= Math.exp(-k * (0.6 * clamp((g.PAO2 - 100) / 450, 0, 1.3) + 0.18 * clamp((g.pH - 7.40) / 0.1, 0, 2.5))); }
     pvr = Math.max(0.35, pvr);
     h.PVRf = ease(h.PVRf, pvr, dtp, 15);
     const inoF = 1 + 0.15 * p.inotrope;
@@ -1047,18 +1049,18 @@ class Engine {
       CO = base.CO0 * cf * pfg * hrF;
       const PVRabs = base.PVRabs0 * h.PVRf;
       const QpD = fs * CO;
-      const Pg = base.LAP + QpD * PVRabs + 0.6 * Math.max(0, ITP - 2);
-      const restr = clamp(1 - (Pg - 18) * 0.04, 0.45, 1);
+      const Pg = base.LAP + QpD * PVRabs + 0.9 * Math.max(0, ITP - 2);
+      const restr = clamp(1 - (Pg - 13) * 0.06, 0.4, 1); // high SVC pressure decompresses away from the lungs
       Qp = QpD * restr; CO *= (0.75 + 0.25 * restr);
       CVP = Math.min(32, Pg);
       g.qpqs = Qp / CO;
     } else if (p.cardiac === 'fontan') {
       const PVRabs = base.PVRabs0 * h.PVRf;
       CO = base.CO0 * cf * hrF; let Pf = base.Pf0;
-      for (let i = 0; i < 4; i++) { Pf = base.LAP + CO * PVRabs + 0.7 * Math.max(0, ITP - 1); CO = base.CO0 * cf * hrF * clamp(1 - 0.05 * (Pf - base.Pf0), 0.3, 1.08); }
+      for (let i = 0; i < 4; i++) { Pf = base.LAP + CO * PVRabs + 1.0 * Math.max(0, ITP - 1); CO = base.CO0 * cf * hrF * clamp(1 - 0.065 * (Pf - base.Pf0), 0.3, 1.08); }
       Qp = CO * (1 - p.fen); CVP = Pf; g.qpqs = 1 - p.fen;
     } else {
-      const qpqs = clamp(base.qpqs0 * Math.pow((p.svrFactor * h.svrComp) / h.PVRf, 0.8), 0.3, 4);
+      const qpqs = clamp(base.qpqs0 * Math.pow((p.svrFactor * h.svrComp) / h.PVRf, 1.0), 0.3, 4);
       const Qt = base.Qt0 * cf * pf * hrF;
       CO = Qt / (1 + qpqs); Qp = Qt - CO; g.qpqs = qpqs;
       CVP = base.CVP0 + 0.3 * Math.max(0, ITP);
@@ -1268,7 +1270,7 @@ const LESSONS = [
   { id: 'L8', title: 'Cardiopulmonary interactions', steps: [
     { type: 'read', html: `<p>Positive pressure raises intrathoracic pressure. That <b>reduces systemic venous return</b> (RV preload), most in hypovolemic patients; <b>reduces LV afterload</b>, which can help a failing LV; and changes <b>PVR</b>, which is lowest near normal lung volume and rises with both atelectasis and overdistension.</p><p><b>Glenn/Fontan:</b> pulmonary blood flow is passive, driven by the gradient from the cavopulmonary pressure to the atrium. High mean airway pressure impedes it — keep PEEP and Pmean low, avoid long Ti, favor spontaneous breathing and early extubation. After a Glenn, mild hypercapnia raises cerebral (SVC) blood flow and pulmonary flow.</p><p><b>PH:</b> alveolar hypoxia, acidosis, hypercapnia, agitation and abnormal lung volume raise PVR; RV failure lowers cardiac output. <b>Parallel circulation:</b> high FiO2 and hypocapnia lower PVR and steal systemic flow (overcirculation): rising SpO2, falling diastolic BP and NIRS, rising lactate.</p>` },
     { type: 'demo', html: `<p>A Fontan child. Raise PEEP to 12 and watch CVP (Fontan pressure), MAP and cardiac output on the monitor. Then switch to PS/CPAP with low PEEP.</p>`, setup: (a) => a.loadCase({ preset: 'child', mode: 'simv_prvc', phys: { cardiac: 'fontan', hb: 14, fen: 0.1 } }) },
-    { type: 'task', html: `<p><b>Exercise.</b> This Glenn infant has SpO2 ~70% and high SVC pressure on high ventilator pressures. Lower mean airway pressure so the Glenn (CVP) pressure falls and SpO2 rises to ≥ 78%.</p>`,
+    { type: 'task', html: `<p><b>Exercise.</b> This Glenn infant has SpO2 in the low 70s and high SVC pressure on high ventilator pressures. Lower mean airway pressure so the Glenn (CVP) pressure falls and SpO2 rises to ≥ 78%.</p>`,
       setup: (a) => a.loadCase({ preset: 'infant', mode: 'simv_pc', phys: { cardiac: 'glenn', hb: 15, wt: 7, sedation: 0.6 }, settings: { peep: 10, pc: 16, ti: 0.9, rate: 26, fio2: 50 } }),
       check: (a) => a.eng.g.SpO2 >= 78 && a.eng.PmeanAvg < a.caseStartPmean - 3, hint: 'Lower PEEP to 5, shorten Ti, and avoid hyperventilation (let PaCO2 rise toward 40–50).', success: 'Lower intrathoracic pressure and less hypocapnia improved passive pulmonary blood flow.' },
     { type: 'quiz', q: 'Which patient is most likely to improve hemodynamically with positive pressure ventilation?', o: ['Hypovolemic infant with normal function', 'Fontan patient', 'Child with severe LV systolic dysfunction and pulmonary edema', 'Glenn patient'], a: 2, e: 'Reduced LV afterload and improved oxygenation can raise output in LV failure.' }
@@ -1373,7 +1375,7 @@ const SCENARIOS = [
     timeline: [ { at: 12, fn: (a) => a.ramp('leak', 0.3, 20) }, { at: 40, fn: (a) => a.ramp('leak', 0.55 * a.sev(), 25) } ],
     questions: [
       { id: 'q1', d: 'wave', pts: 3, q: 'VTi is clearly greater than VTe and the volume trace does not return to baseline. This indicates…', o: ['Air trapping', 'A leak', 'Bronchospasm', 'Double triggering'], a: 1 },
-      { id: 'q2', d: 'mech', pts: 2, q: 'Why did the PRVC regulated pressure rise?', o: ['Compliance fell', 'The ventilator regulates on exhaled VT, which the leak reduces', 'Auto-PEEP', 'The trigger is too sensitive'], a: 1 }
+      { id: 'q2', d: 'mech', pts: 2, q: 'Measured leak is now above 30%. Why is raising the target VT to bring VTe back up a poor first response?', o: ['It is the correct first response', 'It treats a measurement problem instead of the cause; find and fix the leak (cuff, ETT position, circuit) first, because volume targeting during a large leak can deliver more volume to the lungs than intended', 'Raising VT lowers FiO2', 'VTe cannot change in PRVC'], a: 1 }
     ],
     reasoning: { d: 'emerg', pts: 2, prompt: 'List the possible sources of a leak you would check and in what order.' },
     rubric: [
@@ -1409,12 +1411,12 @@ const SCENARIOS = [
     reasoning: { d: 'cardio', pts: 3, prompt: 'Explain the physiology linking oxygenation, CO2, acidosis, intrathoracic pressure and RV function in this patient.' },
     rubric: [
       { id: 'r1', d: 'emerg', pts: 2, text: 'Called for help', check: (c) => H.help(c) },
-      { id: 'r2', d: 'cardio', pts: 3, text: 'Increased FiO2 to ≥ 80%', check: (c) => c.changes.some(x => x.key === 'fio2' && x.to >= 80) },
+      { id: 'r2', d: 'cardio', pts: 3, text: 'Increased FiO2 to ≥ 80% (ventilator or 100% hand-ventilation)', check: (c) => c.changes.some(x => x.key === 'fio2' && x.to >= 80) || H.did(c, 'bag') },
       { id: 'r3', d: 'cardio', pts: 2, text: 'Requested sedation/analgesia', check: (c) => H.teamReq(c, 'sedation') },
       { id: 'r4', d: 'cardio', pts: 2, text: 'Requested inhaled nitric oxide', check: (c) => H.teamReq(c, 'ino') },
       { id: 'r5', d: 'abg', pts: 2, text: 'Obtained ABG and avoided acidosis (final pH ≥ 7.35)', check: (c) => H.abgCount(c) >= 1 && c.eng.g.pH >= 7.35 },
       { id: 'r6', d: 'cardio', pts: 1, text: 'Avoided PEEP ≥ 10', check: (c) => c.eng.set.peep < 10 }
-    ], critical: [ { id: 'c1', text: 'FiO2 not increased within 90 s of SpO2 falling below 85%', check: (c) => c.spo2LowT != null && !c.changes.some(x => x.key === 'fio2' && x.to > 50 && x.t - c.spo2LowT <= 90) }, { id: 'c2', text: 'No call for help during crisis', check: (c) => !H.help(c) } ] },
+    ], critical: [ { id: 'c1', text: 'FiO2 not increased within 90 s of SpO2 falling below 85%', check: (c) => c.spo2LowT != null && !c.changes.some(x => x.key === 'fio2' && x.to > 50 && x.t - c.spo2LowT <= 90) && !c.log.some(x => x.id === 'bag' && x.t - c.spo2LowT <= 90) }, { id: 'c2', text: 'No call for help during crisis', check: (c) => !H.help(c) } ] },
   { id: 'S8', title: 'Glenn physiology and intrathoracic pressure', short: 'Glenn', domains: ['cardio', 'abg'],
     brief: '7-month-old, 7 kg, POD 1 after bidirectional Glenn, Hb 15. Ventilated with a lung-recruitment approach overnight. SpO2 low 70s, irritable when stimulated, cerebral NIRS low.',
     setup: { preset: 'infant', phys: { wt: 7, cardiac: 'glenn', hb: 15, sedation: 0.6 }, mode: 'simv_pc', settings: { pc: 16, peep: 10, ti: 0.9, rate: 26, fio2: 50, ps: 10 }, alarms: { vteLow: 30, vteHigh: 110 } },
@@ -1428,7 +1430,7 @@ const SCENARIOS = [
       { id: 'r2', d: 'cardio', pts: 2, text: 'Reduced mean airway pressure by ≥ 4 cmH2O', check: (c) => c.startMeasured.Pmean - c.eng.PmeanAvg >= 4 },
       { id: 'r3', d: 'abg', pts: 2, text: 'Obtained an ABG', check: (c) => H.abgCount(c) >= 1 },
       { id: 'r4', d: 'abg', pts: 2, text: 'Avoided hyperventilation (final PaCO2 ≥ 38)', check: (c) => c.eng.g.PaCO2 >= 38 },
-      { id: 'r5', d: 'cardio', pts: 2, text: 'SpO2 ≥ 78% at case end', check: (c) => c.eng.g.SpO2 >= 78 }
+      { id: 'r5', d: 'cardio', pts: 2, text: 'SpO2 improved by ≥ 6 points by case end', check: (c) => c.eng.g.SpO2 - c.startGas.SpO2 >= 6 }
     ], critical: [ { id: 'c1', text: 'Increased mean airway pressure further', check: (c) => c.eng.PmeanAvg > c.startMeasured.Pmean + 2 } ] },
   { id: 'S9', title: 'Pressure support and extubation readiness', short: 'Extubation', domains: ['fund', 'cardio', 'abg'],
     brief: '2-year-old, 14 kg, POD 3 after complete AVSD repair with residual moderate LV dysfunction and mitral regurgitation. Awake on PS/CPAP. The team asks whether the patient is ready to extubate.',
