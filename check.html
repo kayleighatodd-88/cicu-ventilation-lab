@@ -373,7 +373,7 @@ function bsaFromWt(w) { return (4 * w + 7) / (w + 90); }
 const MODEL_NOTES = [
   'Respiratory system: single-compartment lung (one compliance, one resistance) with mild overdistension stiffening above ~25 cmH2O elastic pressure. Endotracheal tube resistance scales roughly with 1/diameter^4.75 and is flow-independent.',
   'Patient effort: a sinusoidal inspiratory muscle pressure (Pmus) generator. Drive scales with sedation, PaCO2 (chemoreflex) and hypoxemia. Edi is modelled as Pmus divided by a fixed neuro-ventilatory efficiency (≈0.9 cmH2O/µV) plus tonic activity.',
-  'Ventilator: pressure source with set rise time that sags with patient effort (up to 2.5 cmH2O; largest at low support and while effort is rising), so spontaneous breaths dip Paw on CPAP and scallop it on PS/PC breaths. Flow trigger compares patient flow (leak compensation on) or net measured flow (leak compensation off) to the trigger setting. PS/VS breaths cycle at the End-insp. % of peak flow; NAVA cycles at 70% of peak Edi.',
+  'Ventilator: pressure source with set rise time that sags with patient effort (up to 2.5 cmH2O; largest at low support and while effort is rising), so spontaneous breaths dip Paw on CPAP and scallop it on PS/PC breaths; Paw rises slightly if the patient starts exhaling before cycling, and each breath has a small random pressure overshoot (≤ 2.5 cmH2O, larger on supported breaths). Patient effort varies breath to breath (amplitude ±22%, timing ±14%, inspiratory time ±12%, sighs ~3% of breaths) from a seeded random source. Flow trigger compares patient flow (leak compensation on) or net measured flow (leak compensation off) to the trigger setting. PS/VS breaths cycle at the End-insp. % of peak flow; NAVA cycles at 70% of peak Edi.',
   'PRVC and VS adjust pressure breath-by-breath toward the target using expiratory VT, in steps of no more than 3 cmH2O, and never above the upper pressure limit minus 5 cmH2O. The exact Getinge regulation algorithm is proprietary and is not reproduced.',
   'SIMV: a mandatory breath is due every 60/rate seconds; a patient trigger in the last 30% of the SIMV period delivers a synchronized mandatory breath, earlier triggers receive PS.',
   'Automode: switches from controlled to supported after two consecutive patient-triggered breaths and back to controlled when no trigger occurs within the trigger timeout. The real Servo-u timeout adapts over successive breaths; here it is fixed at the set value.',
@@ -483,6 +483,7 @@ class Engine {
     this.autoSub = 'ctrl'; this.consec = 0; this.backup = false; this.ediLost = false; this.regLimited = false; this.pHighHit = 0;
     this.hold = null; this.holdReq = null; this.holdResult = null;
     this.dispVol = 0; this.pawWin = []; this.PmeanAvg = this.set.peep + 3; this.pawAcc = 0; this.pawN = 0;
+    this.seed = (cfg.seed || 20261105) >>> 0;
     this.neural = { start: -0.3, period: 60 / P.rr, ti: P.tiN, pmax: 0, apneic: false, starts: 0, expAtOnset: true };
     this.missed = 0; this.annots = []; this.events = []; this.slowAcc = 0; this.sampleAcc = 0;
     this.co2Wave = 0; this.expVolSince = 0; this.bag = { last: -9, active: false };
@@ -527,6 +528,12 @@ class Engine {
     this.odK = 0.1 / (this.Ceff * this.Ceff); this.Vod = 25 * this.Ceff;
     let lg = p.leak * p.wt * 2.5; if (p.extubated) lg = p.wt * 25; this.leakG = lg;
   }
+  rng() { // mulberry32
+    let t = (this.seed = (this.seed + 0x6D2B79F5) >>> 0);
+    t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+  gauss() { return Math.sqrt(-2 * Math.log(1 - this.rng())) * Math.cos(2 * Math.PI * this.rng()); }
   pel(V) { const ex = V - this.Vod; return V / this.Ceff + (ex > 0 ? this.odK * ex * ex : 0); }
 
   /* ---------- patient neural drive ---------- */
@@ -538,11 +545,13 @@ class Engine {
       if (n.starts >= 2) this.annot('double', n.start);
       const drive = this.driveEff;
       n.apneic = drive < 0.12;
-      n.pmax = n.apneic ? 0 : Math.min(26, 14 * drive) * (1 - clamp(this.phys.weak || 0, 0, 0.9));
+      const sigh = this.rng() < 0.03;
+      const amp = clamp(1 + 0.22 * this.gauss(), 0.5, 1.6) * (sigh ? 1.7 : 1);
+      n.pmax = n.apneic ? 0 : Math.min(26, 14 * drive * amp) * (1 - clamp(this.phys.weak || 0, 0, 0.9));
       const rrScale = clamp(0.55 + 0.45 * this.chemo * Math.pow(Math.max(drive, 0.05) / 0.45, 0.35), 0.35, 2.0);
       const rr = P.rr * rrScale * (this.phys.rrMult || 1);
-      n.period = (60 / rr) * (1 + 0.07 * Math.sin(this.t * 0.37) + 0.04 * Math.sin(this.t * 1.13));
-      n.ti = Math.min(P.tiN * (1 + 0.05 * Math.sin(this.t * 0.71)), n.period * 0.5);
+      n.period = (60 / rr) * clamp(1 + 0.14 * this.gauss() + 0.04 * Math.sin(this.t * 0.37), 0.65, 1.45) * (sigh ? 1.3 : 1);
+      n.ti = Math.min(P.tiN * clamp(1 + 0.12 * this.gauss(), 0.7, 1.35) * (sigh ? 1.35 : 1), n.period * 0.5);
       n.start = this.t; n.starts = 0; n.expAtOnset = this.phase === 'exp'; tn = 0;
     }
     let pm = 0;
@@ -577,9 +586,13 @@ class Engine {
     // the ventilator is not an ideal pressure source: patient effort pulls airway pressure down,
     // most when support is low (CPAP dip) and while effort is still rising (servo lag)
     this.pmusLag += (this.Pmus - this.pmusLag) * Math.min(1, dt / 0.1);
-    if (!p.bagging && !this.hold && this.phase === 'insp' && this.Pmus > 0.05 && !p.disconnected) {
-      const lvl = Math.max(0, Paw - PEEP);
-      Paw -= clamp(0.18 * this.Pmus * 4 / (lvl + 4) + 0.3 * Math.max(0, this.Pmus - this.pmusLag), 0, 2.5);
+    if (!p.bagging && !this.hold && this.phase === 'insp' && this.cur && !p.disconnected) {
+      const b = this.cur, lvl = Math.max(0, Paw - PEEP), tin = this.t - b.start;
+      if (this.Pmus > 0.05) Paw -= clamp(0.18 * this.Pmus * 4 / (lvl + 4) + 0.3 * Math.max(0, this.Pmus - this.pmusLag), 0, 2.5);
+      // patient starting to exhale before the breath ends pushes pressure up (end-inspiratory bump)
+      Paw += clamp(0.35 * Math.max(0, this.pmusLag - this.Pmus), 0, 1.5);
+      // controller overshoot just after the pressure rise, different every breath
+      if (lvl > 1 && tin >= s.rise) Paw += b.ov * Math.exp(-(tin - s.rise) / 0.12);
     }
 
     const Pel = this.pel(this.V);
@@ -740,6 +753,7 @@ class Engine {
     else if (kind === 'bag') { cycle = 'none'; }
     const mand = kind === 'pc' || kind === 'prvc' || kind === 'bpc';
     this.cur = { start: this.t, kind, triggered, mand, level, ti, cycle, peakQ: 0, VTi: 0, VTe: 0, Vstart: this.V, Vmax: this.V, Pmax: 0, pawInt: 0, dur: 0, ediPk: 0, ediMin: this.ediExpMin < 50 ? this.ediExpMin : this.EdiMeas, endInspQ: 0, peep: this.Paw };
+    this.cur.ov = kind === 'bag' || kind === 'nava' ? 0 : Math.min(2.5, Math.abs(this.gauss()) * (kind === 'ps' || kind === 'vs' || kind === 'bps' ? 1.3 : 0.7));
     this.phase = 'insp'; this.dispVol = 0; this.lastAnyBreath = this.t;
     if (kind !== 'bag') { if (triggered) { const n = this.neural; if (this.t - n.start < n.ti + 0.25) n.starts++; } }
     if (triggered && this.annots) this.annot('trig', this.t);
