@@ -622,7 +622,7 @@ class Engine {
     if (b) {
       if (this.phase === 'insp' && !this.hold) {
         b.VTi += (Qp + Qleak) * dt; b.Pmax = Math.max(b.Pmax, PawDisp); b.Vmax = Math.max(b.Vmax, this.V);
-        b.peakQ = Math.max(b.peakQ, this.Qmeas);
+        if (this.Qmeas > b.peakQ) { b.peakQ = this.Qmeas; b.peakQt = this.t; }
         if (this.EdiMeas > b.ediPk) b.ediPk = this.EdiMeas;
       } else if (this.phase === 'exp') {
         if (Qp < 0) b.VTe += -Qp * dt;
@@ -1692,6 +1692,7 @@ function drawWaves() {
     }
     x.strokeStyle = c2.col; x.lineWidth = 1.8 * d;
     polyline(x, c2.k, xOf, yOf, t0, tEnd, sweep, gap);
+    if (c2.k === 'f') triggerSegments(x, xOf, yOf, t0 + (sweep ? gap : 0), tEnd, d);
     if (App.overlays.labels) breathLabels(x, c2.k, xOf, yOf, y0, t0 + (sweep ? gap : 0), tEnd, d);
     if (App.overlays.annotate && c2.k === 'f') annotateFlow(x, xOf, yOf, t0 + (sweep ? gap : 0), tEnd, d);
     if (App.overlays.annotate && c2.k === 'v') annotateVol(x, xOf, yOf, y0, t0, tEnd, d);
@@ -1721,6 +1722,20 @@ function breathLabels(x, key, xOf, yOf, y0, t0, t1, d) {
     x.fillText(fmt(val, key === 'v' && val < 30 ? 1 : 0), xx, Math.max(y0 + 11 * d, y - 4 * d));
   }
   x.textAlign = 'left';
+}
+function triggerSegments(x, xOf, yOf, t0, t1, d) {
+  // Servo-style: the inspiratory flow of a patient-triggered breath is drawn pink from the trigger to peak flow
+  const e = App.eng, list = e.breaths.slice(-40);
+  if (e.cur && list[list.length - 1] !== e.cur) list.push(e.cur);
+  x.strokeStyle = '#FF4FB8'; x.lineWidth = 2.2 * d;
+  for (const b of list) {
+    if (!b.triggered || b.kind === 'bag' || !b.peakQt) continue;
+    const ta = Math.max(t0, b.start - 0.04), tb = Math.min(t1, b.peakQt);
+    if (tb <= ta) continue;
+    let started = false, px = -1; x.beginPath();
+    ringIter(ta, tb, (i, t) => { const xx = xOf(t), yy = yOf(ring.f[i]); if (!started || xx < px) { x.moveTo(xx, yy); started = true; } else x.lineTo(xx, yy); px = xx; });
+    x.stroke();
+  }
 }
 function polyline(x, key, xOf, yOf, t0, t1, sweep, gap) {
   const arr = ring[key]; let started = false, px = -1;
