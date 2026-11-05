@@ -38,22 +38,26 @@ button{ cursor:pointer; }
 @media (prefers-reduced-motion: reduce){ *{ animation:none !important; transition:none !important; } }
 
 /* ---------- top bar ---------- */
-.topbar{ display:flex; align-items:center; gap:18px; padding:10px 18px; background:var(--head); color:var(--head-ink); border-bottom:4px solid var(--accent); flex-wrap:wrap; }
+.topbar{ display:flex; align-items:center; gap:14px; padding:6px 14px; background:var(--head); color:var(--head-ink); border-bottom:4px solid var(--accent); flex-wrap:wrap; }
 .topbar .btn{ background:transparent; color:#fff; border-color:rgba(255,255,255,.35); }
 .topbar .btn:hover{ border-color:#fff; }
 .topbar .btn.primary{ background:var(--accent); border-color:var(--accent); }
 .topbar .lbl{ color:#D6D2C4; }
 .topbar .sel{ background:#3F4C56; color:#fff; border-color:rgba(255,255,255,.3); }
-.brand{ display:flex; align-items:center; gap:12px; min-width:260px; }
+.brand{ display:flex; align-items:center; gap:10px; min-width:240px; flex:1 1 300px; }
+.brand > div{ min-width:0; }
+.brand svg{ width:32px; height:32px; }
 .brand svg{ flex:none; }
-.brand h1{ margin:0; font-family:var(--serif); font-size:22px; font-weight:700; line-height:1.1; }
-.brand p{ margin:2px 0 0; font-size:12px; color:#D6D2C4; max-width:52ch; }
+.brand h1{ margin:0; font-family:var(--serif); font-size:19px; font-weight:700; line-height:1.1; }
+.brand p{ margin:1px 0 0; font-size:11.5px; color:#D6D2C4; max-width:70ch; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .sibs{ display:flex; gap:2px; background:rgba(255,255,255,.08); border-radius:8px; padding:3px; }
-.sibs a{ color:#E8E6E0; text-decoration:none; padding:7px 14px; border-radius:6px; font-weight:600; font-size:14px; }
+.sibs a{ color:#E8E6E0; text-decoration:none; padding:5px 12px; border-radius:6px; font-weight:600; font-size:14px; }
 .sibs a:hover{ background:rgba(255,255,255,.12); }
 .sibs a[aria-current="page"]{ background:#fff; color:var(--charcoal); }
 .sibs a:focus-visible{ outline-color:#fff; }
-.simctl{ display:flex; align-items:center; gap:8px; margin-left:auto; flex-wrap:wrap; }
+.simctl{ display:flex; align-items:center; gap:6px; margin-left:auto; flex-wrap:wrap; }
+.topbar .lbl{ flex-direction:row; align-items:center; gap:5px; }
+.topbar .btn{ padding:5px 10px; }
 .btn{ border:1px solid var(--line); background:var(--panel); padding:6px 12px; border-radius:8px; font-weight:500; display:inline-flex; align-items:center; gap:6px; }
 .btn:hover{ border-color:var(--accent); }
 .btn.primary{ background:var(--accent); border-color:var(--accent); color:var(--accent-ink); font-weight:600; }
@@ -64,17 +68,17 @@ button{ cursor:pointer; }
 .lbl{ font-size:12px; color:var(--ink2); display:flex; flex-direction:column; gap:2px; }
 
 /* ---------- bench layout ---------- */
-.bench{ display:grid; grid-template-columns:minmax(0,1.5fr) minmax(370px,1fr); grid-template-rows:auto minmax(0,1fr); grid-template-areas:"vent mon" "vent clin"; gap:16px; padding:16px; max-width:1800px; margin:0 auto; }
-.vent-dev{ grid-area:vent; }
-.mon-dev{ grid-area:mon; }
-.clin{ grid-area:clin; min-height:0; }
-body.vent-full .mon-dev, body.vent-full .clin{ display:none; }
-body.vent-full .bench{ grid-template-columns:1fr; grid-template-areas:"vent"; }
-@media (max-width: 1150px){ .bench{ grid-template-columns:1fr; grid-template-areas:"vent" "mon" "clin"; } }
+.bench{ display:grid; grid-template-columns:minmax(0,1.65fr) minmax(330px,1fr); gap:12px; padding:12px 14px; max-width:1900px; width:100%; margin:0 auto; }
+.col-l, .col-r{ display:flex; flex-direction:column; gap:12px; min-width:0; min-height:0; }
+.ptcard{ margin:0; flex:none; }
+.ptcard h3{ font-size:16px; }
+body.vent-full .col-r, body.vent-full .clin{ display:none; }
+body.vent-full .bench{ grid-template-columns:1fr; }
+@media (max-width: 1150px){ .bench{ grid-template-columns:1fr; } }
 
 /* ---------- Servo-style ventilator ---------- */
-.vent-housing{ background:linear-gradient(180deg,var(--housing),#DCE1E4); border:1px solid var(--housing-edge); border-radius:22px; padding:16px 16px 12px; box-shadow:0 1px 0 #fff inset, 0 10px 24px rgba(30,45,55,.18); }
-.vent-plate{ display:flex; justify-content:space-between; align-items:center; color:#56636C; font-family:var(--cond); font-size:12px; padding:8px 6px 0; }
+.vent-housing{ background:linear-gradient(180deg,var(--housing),#DCE1E4); border:1px solid var(--housing-edge); border-radius:18px; padding:10px 10px 6px; box-shadow:0 1px 0 #fff inset, 0 10px 24px rgba(30,45,55,.18); }
+.vent-plate{ display:flex; justify-content:space-between; align-items:center; color:#56636C; font-family:var(--cond); font-size:11.5px; padding:5px 6px 0; }
 .vent-plate b{ font-weight:600; }
 .vscreen{ background:var(--screen); border-radius:10px; border:2px solid #2A3A46; color:var(--sTxt); font-family:var(--cond); display:flex; flex-direction:column; overflow:hidden; height:clamp(520px, 64vh, 760px); position:relative; user-select:none; }
 body.vent-full .vscreen{ height:calc(100vh - 170px); }
@@ -109,6 +113,9 @@ body.vent-full .vscreen{ height:calc(100vh - 170px); }
 .nv.big .v{ font-size:30px; }
 .nv.wide{ grid-column:span 2; }
 .nv.cP .v{ color:var(--sP); } .nv.cF .v{ color:var(--sF); } .nv.cV .v{ color:var(--sV); } .nv.cE .v{ color:var(--sE); } .nv.cW .v{ color:#E7EEF2; }
+.nv.cS .v{ color:#4BD48A; } .nv.cM .v{ color:#A9C4DA; }
+.nv.wide .h span:first-child{ white-space:pre; }
+.nv .v small{ font-size:.6em; color:var(--sDim); }
 .nv.dim .v{ color:#56707F; }
 .vbar{ display:flex; gap:5px; padding:6px; background:#0A1A27; border-top:1px solid var(--sLine); overflow-x:auto; }
 .vtile{ flex:1 0 98px; background:var(--tile); border:1px solid #23506F; color:var(--sTxt); border-radius:7px; padding:5px 8px 6px; text-align:left; display:flex; flex-direction:column; min-width:96px; }
@@ -134,11 +141,11 @@ body.vent-full .vscreen{ height:calc(100vh - 170px); }
 .mon-foot{ display:flex; justify-content:space-between; color:#9AA6AE; font-size:12px; padding:6px 4px 0; font-family:var(--cond); }
 
 /* ---------- clinical panel ---------- */
-.clin{ background:var(--panel); border:1px solid var(--line); border-radius:14px; display:flex; flex-direction:column; overflow:hidden; min-height:420px; }
+.clin{ background:var(--panel); border:1px solid var(--line); border-radius:14px; display:flex; flex-direction:column; overflow:hidden; min-height:230px; }
 .tabs{ display:flex; border-bottom:1px solid var(--line); background:var(--panel2); overflow-x:auto; }
-.tabs button{ border:0; background:transparent; padding:10px 14px; font-weight:600; color:var(--ink2); border-bottom:3px solid transparent; white-space:nowrap; }
+.tabs button{ border:0; background:transparent; padding:8px 14px; font-weight:600; color:var(--ink2); border-bottom:3px solid transparent; white-space:nowrap; }
 .tabs button[aria-selected="true"]{ color:var(--ink); border-bottom-color:var(--accent); background:var(--panel); }
-.tabpanel{ padding:14px; overflow:auto; flex:1; min-height:0; max-height:calc(100vh - 470px); }
+.tabpanel{ padding:10px 12px; overflow:auto; flex:1; min-height:0; max-height:70vh; }
 @media (max-width:1150px){ .tabpanel{ max-height:none; } }
 .tabpanel[hidden]{ display:none; }
 .card{ background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:12px; margin-bottom:12px; }
@@ -146,12 +153,19 @@ body.vent-full .vscreen{ height:calc(100vh - 170px); }
 .card h4{ margin:10px 0 4px; font-size:13px; color:var(--ink2); font-weight:600; }
 .muted{ color:var(--ink2); font-size:13px; }
 .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
-.actions{ display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:6px; }
-.actions .btn{ justify-content:flex-start; text-align:left; font-size:13.5px; padding:7px 9px; }
+.actions{ display:grid; grid-template-columns:repeat(auto-fill,minmax(138px,1fr)); gap:5px; }
+.actions .btn{ justify-content:flex-start; text-align:left; font-size:13px; padding:5px 8px; line-height:1.25; }
+.bedgrid{ display:grid; grid-template-columns:minmax(0,1.45fr) minmax(240px,1fr); gap:10px; align-items:start; }
+.bedgrid > .card{ margin:0; }
+.bedgrid .feedcard{ position:sticky; top:0; }
+.bedgrid .feedcard .feed{ max-height:260px; overflow:auto; }
+.teamrow{ display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-top:8px; }
+.teamrow h4{ margin:0 4px 0 0; }
+@media (max-width:760px){ .bedgrid{ grid-template-columns:1fr; } .bedgrid .feedcard{ position:static; } }
 .actions .btn.esc{ border-color:var(--accent); border-left-width:4px; }
 .actions .btn.on{ background:var(--accent-soft); border-color:var(--accent); }
 .feed{ list-style:none; margin:0; padding:0; font-size:13.5px; }
-.feed li{ padding:7px 0; border-bottom:1px solid var(--line); }
+.feed li{ padding:5px 0; border-bottom:1px solid var(--line); }
 .feed li .t{ color:var(--ink2); font-variant-numeric:tabular-nums; margin-right:6px; font-size:12px; }
 .feed li.ev{ color:var(--ink2); }
 .abgcard{ display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
@@ -191,7 +205,8 @@ table.mini th, table.mini td{ border:1px solid var(--line); padding:4px 6px; tex
 .lesson p{ margin:6px 0; }
 
 /* ---------- dock ---------- */
-.dock{ position:sticky; bottom:0; display:flex; gap:12px; align-items:center; padding:9px 18px calc(9px + env(safe-area-inset-bottom,0px)); background:var(--room2); border-top:3px solid var(--charcoal); flex-wrap:wrap; z-index:5; }
+.dock{ position:sticky; bottom:0; display:flex; gap:12px; align-items:center; padding:6px 14px calc(9px + env(safe-area-inset-bottom,0px)); background:var(--room2); border-top:3px solid var(--charcoal); flex-wrap:wrap; z-index:5; }
+.dock .lbl{ flex-direction:row; align-items:center; gap:5px; }
 .dock .status{ flex:1; font-size:13.5px; color:var(--ink2); min-width:180px; }
 .dock .timer{ color:var(--ink); font-family:var(--cond); font-size:20px; font-weight:600; font-variant-numeric:tabular-nums; }
 
@@ -233,6 +248,23 @@ textarea{ width:100%; }
 .toast{ position:fixed; left:50%; bottom:76px; transform:translateX(-50%); background:#13293A; color:#E7EEF2; border:1px solid #2B4D66; padding:10px 16px; border-radius:10px; z-index:60; max-width:min(560px,92vw); font-size:14px; box-shadow:0 8px 20px rgba(0,0,0,.3); }
 .expect{ position:fixed; right:18px; bottom:80px; width:min(380px,90vw); background:var(--panel); border:1px solid var(--line); border-top:4px solid var(--accent); border-radius:12px; padding:12px 14px; z-index:40; box-shadow:0 10px 26px rgba(0,0,0,.25); font-size:13.5px; }
 .expect h4{ margin:0 0 4px; font-family:var(--serif); font-size:15px; }
+/* Desktop: the whole bench fits the window; long panels scroll inside themselves */
+@media (min-width: 1151px) and (min-height: 700px){
+  body{ height:100vh; height:100dvh; display:flex; flex-direction:column; overflow:hidden; }
+  .topbar, .dock{ flex:none; }
+  .dock{ position:static; }
+  .bench{ flex:1; min-height:0; }
+  .col-l > .vent-dev{ flex:none; }
+  .col-l > .clin{ flex:1; min-height:0; }
+  .col-r > .mon-dev{ flex:1; min-height:0; display:flex; }
+  .mon-dev .mon-housing{ flex:1; display:flex; flex-direction:column; min-height:0; }
+  .mon-dev .mscreen{ flex:1; height:auto; min-height:240px; }
+  .vscreen{ height:clamp(380px, calc(100dvh - 410px), 680px); }
+  body.vent-full .vscreen{ height:calc(100dvh - 150px); }
+  .tabpanel{ max-height:none; }
+}
+@media (min-width: 1400px){ .topbar{ flex-wrap:nowrap; } .brand{ flex:1 1 0; } .simctl{ flex-wrap:nowrap; } }
+@media (min-width: 1151px) and (max-height: 699px){ .vscreen{ height:clamp(380px, 60vh, 520px); } }
 #printArea{ display:none; }
 @media print{
   body > *:not(#printArea){ display:none !important; }
@@ -266,6 +298,7 @@ textarea{ width:100%; }
 </header>
 
 <main class="bench">
+  <div class="col-l">
   <section class="vent-dev" aria-label="Ventilator">
     <div class="vent-housing">
       <div class="vscreen" id="vscreen">
@@ -289,13 +322,6 @@ textarea{ width:100%; }
     </div>
   </section>
 
-  <section class="mon-dev" aria-label="Bedside monitor">
-    <div class="mon-housing">
-      <div class="mscreen"><canvas id="cMon"></canvas><div class="mnums" id="mNums"></div></div>
-      <div class="mon-foot"><span id="monPhys">—</span><span id="monNirs">—</span></div>
-    </div>
-  </section>
-
   <section class="clin" aria-label="Clinical panel">
     <div class="tabs" role="tablist" id="clinTabs">
       <button role="tab" data-tab="bedside" aria-selected="true">Bedside</button>
@@ -308,6 +334,16 @@ textarea{ width:100%; }
     <div class="tabpanel" id="tp-case" hidden></div>
     <div class="tabpanel" id="tp-instr" hidden></div>
   </section>
+  </div>
+  <div class="col-r">
+  <section class="mon-dev" aria-label="Bedside monitor">
+    <div class="mon-housing">
+      <div class="mscreen"><canvas id="cMon"></canvas><div class="mnums" id="mNums"></div></div>
+      <div class="mon-foot"><span id="monPhys">—</span><span id="monNirs">—</span></div>
+    </div>
+  </section>
+  <section class="card ptcard" id="ptCard" aria-label="Patient"></section>
+  </div>
 </main>
 
 <footer class="dock">
@@ -1036,6 +1072,9 @@ class Engine {
     const span = Math.min(30, Math.max(this.t, 1));
     const lastB = br[br.length - 1];
     const lastM = [...br].reverse().find(b => b.mand);
+    // per-type values (last 3 of each type within 30 s) so spontaneous breaths are not averaged away
+    const byType = (sp) => { const xs = []; for (let i = br.length - 1; i >= 0 && xs.length < 3; i--) { const b = br[i]; if (b.end < t0) break; if (b.spont === sp) xs.push(b); } return xs.length ? { P: xs.reduce((a, b) => a + b.Pmax, 0) / xs.length, VT: xs.reduce((a, b) => a + b.VTe, 0) / xs.length } : null; };
+    const spB = byType(true), mdB = byType(false);
     const VTi = avg(b => b.VTi), VTe = avg(b => b.VTe), Ppk = avg(b => b.Pmax);
     const peepM = avg(b => b.peep);
     const leak = VTi > 1 ? clamp((VTi - VTe) / VTi * 100, 0, 100) : 0;
@@ -1048,6 +1087,7 @@ class Engine {
       MVe: discon ? 0 : vteSum * 60 / span / 1000, MVsp: vteSp * 60 / span / 1000,
       Cdyn: Ppk - peepM > 1 ? VTe / (Ppk - peepM) : null, leak, ti, te, ie: ti > 0 && te > 0 ? te / ti : null,
       ediPk: avg(b => b.ediPk), ediMin: avg(b => (b.ediMin < 50 ? b.ediMin : 0)), endExpFlow: lastB ? lastB.endExpQ * 60 / 1000 : 0, autoPEEP: lastB ? lastB.autoPEEP : 0,
+      spP: spB && !discon ? spB.P : null, spVT: spB && !discon ? spB.VT : null, mdP: mdB && !discon ? mdB.P : null, mdVT: mdB && !discon ? mdB.VT : null,
       regP: this.mode === 'simv_prvc' || (this.mode === 'auto_prvc_vs' && this.autoSub === 'ctrl') ? this.prvcP : this.mode === 'auto_prvc_vs' ? this.vsP : null
     };
   }
@@ -1443,7 +1483,7 @@ const KIND_COLOR = { 1: '#6F93B0', 2: '#4BD48A', 3: '#FF7AC0', 4: '#F0A044', 5: 
 
 const App = {
   eng: new Engine(), op: VARIANT, paused: false, breathSpeed: 1, physAccel: 4, sound: true,
-  overlays: { annotate: false, pmus: false, expect: true, calcs: false },
+  overlays: { annotate: false, pmus: false, expect: true, calcs: false, labels: true },
   blind: false, timeScale: 10, view: 'waves', frozen: false, freezeT: 0, review: 0,
   config: Object.assign({}, DEFAULT_CONFIG, store.get('cvl_config', {})),
   caseCfg: null, caseStart: null, caseStartBT: 0, abgs: [], actLog: [], feed: [], ramps: [], timeline: [], flags: {},
@@ -1636,8 +1676,10 @@ function drawWaves() {
       }
       if (App.overlays.annotate) annotateBreaths(x, xOf, y0, t0 + (sweep ? gap : 0), tEnd, d);
     }
+    if (App.overlays.labels) breathMarks(x, c2.k, xOf, yOf, y0, y1, t0 + (sweep ? gap : 0), tEnd, d);
     x.strokeStyle = c2.col; x.lineWidth = 1.8 * d;
     polyline(x, c2.k, xOf, yOf, t0, tEnd, sweep, gap);
+    if (App.overlays.labels) breathLabels(x, c2.k, xOf, yOf, y0, t0 + (sweep ? gap : 0), tEnd, d);
     if (App.overlays.annotate && c2.k === 'f') annotateFlow(x, xOf, yOf, t0 + (sweep ? gap : 0), tEnd, d);
     if (App.overlays.annotate && c2.k === 'v') annotateVol(x, xOf, yOf, y0, t0, tEnd, d);
   });
@@ -1649,6 +1691,31 @@ function drawWaves() {
   const legend = [['Mandatory', 1], ['Supported', 2], ['NAVA', 3], ['Backup', 4]];
   let lx = w - rm - 300 * d;
   for (const [n, k] of legend) { x.fillStyle = KIND_COLOR[k]; x.fillRect(lx, h - 11 * d, 10 * d, 4 * d); x.fillStyle = '#7D93A3'; x.fillText(n, lx + 13 * d, h - 5 * d); lx += 74 * d; }
+}
+function visibleBreaths(t0, t1) {
+  const e = App.eng, out = [];
+  const list = e.breaths.slice(-40); if (e.cur && e.phase === 'exp' && list[list.length - 1] !== e.cur) list.push(e.cur);
+  for (const b of list) { if (b.kind === 'bag' || b.start < t0 || b.start > t1 || !b.tiAct) continue; out.push(b); }
+  return out;
+}
+function breathMarks(x, key, xOf, yOf, y0, y1, t0, t1, d) {
+  // faint band behind each spontaneous inspiration so patient-triggered breaths stand out from mandatory ones
+  for (const b of visibleBreaths(t0, t1)) {
+    if (b.mand) continue;
+    const xa = xOf(b.start), xb = xOf(b.start + b.tiAct); if (xb <= xa) continue;
+    x.fillStyle = 'rgba(75,212,138,.10)'; x.fillRect(xa, y0, xb - xa, y1 - y0);
+  }
+}
+function breathLabels(x, key, xOf, yOf, y0, t0, t1, d) {
+  if (key !== 'p' && key !== 'v') return;
+  x.font = `600 ${11 * d}px 'Barlow Semi Condensed', sans-serif`; x.textAlign = 'center';
+  for (const b of visibleBreaths(t0, t1)) {
+    const xx = xOf(b.start + b.tiAct * 0.5); if (xx < 56 * d) continue;
+    const val = key === 'p' ? b.Pmax : b.VTi, y = yOf(key === 'p' ? b.Pmax : Math.max(0, b.Vmax - b.Vstart, b.VTi));
+    x.fillStyle = b.mand ? '#A9C4DA' : KIND_COLOR[KIND_CODE[b.kind]] || '#4BD48A';
+    x.fillText(fmt(val, key === 'v' && val < 30 ? 1 : 0), xx, Math.max(y0 + 11 * d, y - 4 * d));
+  }
+  x.textAlign = 'left';
 }
 function polyline(x, key, xOf, yOf, t0, t1, sweep, gap) {
   const arr = ring[key]; let started = false, px = -1;
@@ -1711,6 +1778,9 @@ function renderNums() {
   s += nv('Pmean', 'cmH₂O', D(m.Pmean, 0), 'cP big');
   s += nv('PEEP', 'cmH₂O', D(m.PEEP, 0), 'cP');
   s += nv('RR total', 'b/min', D(m.RR, 0), 'cF big');
+  const pv = (P, V) => P == null || disc ? '—' : `${fmt(P, 0)}<small> / </small>${fmt(V, V < 30 ? 1 : 0)}`;
+  s += nv('Spont breaths  Ppeak / VTe', 'cmH₂O / mL', pv(m.spP, m.spVT), 'wide cS' + (m.spP == null ? ' dim' : ''));
+  s += nv('Mand breaths  Ppeak / VTe', 'cmH₂O / mL', pv(m.mdP, m.mdVT), 'wide cM' + (m.mdP == null ? ' dim' : ''));
   s += nv('VTi', 'mL', D(m.VTi, m.VTi < 30 ? 1 : 0), 'cV');
   s += nv('VTe', 'mL', D(m.VTe, m.VTe < 30 ? 1 : 0), 'cV big');
   s += nv('VTe/kg', 'mL/kg', D(m.VTkg, 1), 'cV');
@@ -2295,13 +2365,13 @@ function renderBedside() {
   const e = App.eng, p = e.phys, scn = App.scn;
   const desc = scn ? scn.brief : `${p.age}, ${fmt(p.wt, 1)} kg. ${CARDIAC_TYPES[p.cardiac]} physiology. Free-practice patient.`;
   const tgt = App.config.spo2Targets[p.cardiac], ct = App.config.paco2Targets[p.cardiac];
-  $('#tp-bedside').innerHTML = `
-  <div class="card"><h3>Patient</h3><p style="margin:0 0 6px">${esc(desc)}</p>
-    <div class="grid2 muted"><span>ETT ${fmt(p.ett, 1)} ${p.cuffed ? 'cuffed' : 'uncuffed'}</span><span>Documented depth ${fmt(docDepth(p), 1)} cm</span><span>SpO₂ goal ${esc(tgt)}</span><span>PaCO₂ goal ${esc(ct)}</span></div></div>
-  <div class="card"><h3>Actions</h3><div class="actions">${ACTIONS.map(([id, n, esc2]) => `<button class="btn ${esc2 ? 'esc' : ''} ${id === 'bag' && p.bagging ? 'on' : ''}" data-a="${id}">${id === 'bag' && p.bagging ? 'Return to ventilator' : esc(n)}</button>`).join('')}</div>
-    <h4>Request team intervention</h4><div style="display:flex;gap:6px;flex-wrap:wrap"><select class="sel" id="teamSel">${TEAM.map(t => `<option value="${t[0]}">${t[1]}</option>`).join('')}</select><button class="btn" id="teamBtn">Request</button></div></div>
-  <div class="card" id="calcCard" ${App.overlays.calcs && App.op !== 'check' ? '' : 'hidden'}><h3>Calculations</h3><div id="calcBody"></div></div>
-  <div class="card"><h3>Findings, alarms and changes</h3><ul class="feed" id="feed">${renderFeedItems()}</ul></div>`;
+  $('#ptCard').innerHTML = `<h3>Patient</h3><p style="margin:0 0 6px">${esc(desc)}</p>
+    <div class="grid2 muted"><span>ETT ${fmt(p.ett, 1)} ${p.cuffed ? 'cuffed' : 'uncuffed'}</span><span>Documented depth ${fmt(docDepth(p), 1)} cm</span><span>SpO₂ goal ${esc(tgt)}</span><span>PaCO₂ goal ${esc(ct)}</span></div>`;
+  $('#tp-bedside').innerHTML = `<div class="bedgrid"><div>
+  <div class="card"><h3>Actions and assessment</h3><div class="actions">${ACTIONS.map(([id, n, esc2]) => `<button class="btn ${esc2 ? 'esc' : ''} ${id === 'bag' && p.bagging ? 'on' : ''}" data-a="${id}">${id === 'bag' && p.bagging ? 'Return to ventilator' : esc(n)}</button>`).join('')}</div>
+    <div class="teamrow"><h4>Request team intervention</h4><select class="sel" id="teamSel">${TEAM.map(t => `<option value="${t[0]}">${t[1]}</option>`).join('')}</select><button class="btn" id="teamBtn">Request</button></div></div>
+  <div class="card" id="calcCard" style="margin-top:10px" ${App.overlays.calcs && App.op !== 'check' ? '' : 'hidden'}><h3>Calculations</h3><div id="calcBody"></div></div></div>
+  <div class="card feedcard"><h3>Findings, alarms and changes</h3><ul class="feed" id="feed">${renderFeedItems()}</ul></div></div>`;
   $$('#tp-bedside [data-a]').forEach(b => b.onclick = () => doAction(b.dataset.a));
   $('#teamBtn').onclick = () => requestTeam($('#teamSel').value);
   renderCalcs();
@@ -2423,6 +2493,7 @@ function renderInstructor() {
   <div class="card"><h3>Complications</h3><p class="muted" style="margin-top:0">Toggle to introduce or clear.${VARIANT === 'teach' ? ' Use “Hide causes” before a trainee takes over.' : ''}</p><div class="chips">${COMPLICATIONS.map(c => `<button class="chip" data-c="${c.id}" aria-pressed="${compPressed(c, p)}">${c.label}</button>`).join('')}</div>
     <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="iClear">Clear all complications</button>${VARIANT === 'teach' ? '<button class="btn" id="iBlind">Hide causes from trainee</button>' : ''}</div></div>
   <div class="card"><h3>Teaching overlays</h3>
+    <label class="tog"><input type="checkbox" data-o="labels" ${App.overlays.labels ? 'checked' : ''}> Label each breath with its peak pressure and VT</label>
     <label class="tog"><input type="checkbox" data-o="annotate" ${App.overlays.annotate ? 'checked' : ''}> Annotate waveforms (breath types, missed efforts, trapping, leak)</label>
     <label class="tog"><input type="checkbox" data-o="pmus" ${App.overlays.pmus ? 'checked' : ''}> Show patient effort (Pmus, dashed)</label>
     <label class="tog"><input type="checkbox" data-o="expect" ${App.overlays.expect ? 'checked' : ''}> Show expected response after each change</label>
@@ -2772,7 +2843,7 @@ function setOp(op) {
   $('#tabCaseBtn').textContent = op === 'learn' ? 'Lessons' : op === 'check' ? 'Check-off' : 'Case';
   const showDock = op === 'teach';
   ['#selScenario', '#selDiff', '#btnLoadScn'].forEach(s => { const x = $(s); (x.closest('label') || x).hidden = !showDock; });
-  if (op === 'check') { App.savedOverlays = Object.assign({}, App.overlays); App.overlays = { annotate: false, pmus: false, expect: false, calcs: false }; App.blind = false; $('#btnFinish').hidden = true; App.loadCase({ preset: 'infant', mode: 'simv_prvc' }); App.flashStatus('Start a check-off in the Check-off tab. Practice freely on this patient until then.'); }
+  if (op === 'check') { App.savedOverlays = Object.assign({}, App.overlays); App.overlays = { annotate: false, pmus: false, expect: false, calcs: false, labels: true }; App.blind = false; $('#btnFinish').hidden = true; App.loadCase({ preset: 'infant', mode: 'simv_prvc' }); App.flashStatus('Start a check-off in the Check-off tab. Practice freely on this patient until then.'); }
   else { if (App.savedOverlays) { App.overlays = App.savedOverlays; App.savedOverlays = null; } }
   if (op === 'learn') { $('#btnFinish').hidden = true; App.lesson = null; App.flashStatus('Choose a module in the Lessons tab.'); }
   if (op === 'teach') { App.flashStatus('Full control of the ventilator and patient. Load a scenario or build a patient in the Instructor tab.'); $('#btnFinish').hidden = !App.scn; }
@@ -2786,7 +2857,7 @@ function init() {
   initDownloads();
   $('#selScenario').innerHTML = SCENARIOS.filter(s => !s.knowledge).map(s => `<option value="${s.id}">${esc(s.title)}</option>`).join('');
   const vi = VARIANT_INFO[VARIANT];
-  document.title = vi.doc; $('#appTitle').textContent = vi.title; $('#appSub').textContent = vi.sub;
+  document.title = vi.doc; $('#appTitle').textContent = vi.title; $('#appSub').textContent = vi.sub; $('#appSub').title = vi.sub;
   $$('.sibs a').forEach(a => { if (a.dataset.v === VARIANT) { a.setAttribute('aria-current', 'page'); a.removeAttribute('target'); a.addEventListener('click', ev => ev.preventDefault()); } else if (!/^https?:/.test(a.getAttribute('href'))) a.closest('.sibs') && (a.title = 'Link available once all three tools are published'); });
   $('#btnRecords').textContent = VARIANT === 'check' ? 'Records' : 'Settings';
   $$('#clinTabs button').forEach(b => b.onclick = () => selectTab(b.dataset.tab));
