@@ -18,8 +18,8 @@
   --accent:#BF5700; --accent-ink:#FFFFFF; --accent-soft:#F2F0EA; --charcoal:#333F48; --limestone:#D6D2C4; --shade:#9CADB7;
   --ok:#3F7A2E; --ok-bg:#E6EFDF; --warn:#8A5300; --warn-bg:#FCEBD2; --bad:#333F48; --bad-bg:#E3E6E8; --info:#005F86;
   --head:#333F48; --head-ink:#FFFFFF;
-  --housing:#EEECE6; --housing-edge:#C8C3B3; --screen:#07131D; --screen2:#0C2030; --tile:#12324A; --tile-hi:#2B6B91;
-  --sP:#F4D03F; --sF:#4BD48A; --sV:#5AB0FF; --sE:#FF7AC0; --sTxt:#E7EEF2; --sDim:#7D93A3; --sLine:#1E3A4F;
+  --housing:#EEECE6; --housing-edge:#C8C3B3; --screen:#1E2124; --screen2:#2A2E31; --tile:#2E3236; --tile-hi:#4F5B63;
+  --sP:#F2B33D; --sF:#5BC85A; --sV:#3EBFCF; --sE:#FF7AC0; --sTxt:#ECEFF1; --sDim:#9AA3A9; --sLine:#3A3F43;
   --mon:#2A3137; --font:'Libre Franklin', Arial, system-ui, sans-serif; --serif:'Charis SIL', Georgia, 'Times New Roman', serif; --cond:'Barlow Semi Condensed', 'Arial Narrow', system-ui, sans-serif;
 }
 @media (prefers-color-scheme: dark){
@@ -80,49 +80,68 @@ body.vent-full .bench{ grid-template-columns:1fr; }
 .vent-housing{ background:linear-gradient(180deg,var(--housing),#DCE1E4); border:1px solid var(--housing-edge); border-radius:18px; padding:10px 10px 6px; box-shadow:0 1px 0 #fff inset, 0 10px 24px rgba(30,45,55,.18); }
 .vent-plate{ display:flex; justify-content:space-between; align-items:center; color:#56636C; font-family:var(--cond); font-size:11.5px; padding:5px 6px 0; }
 .vent-plate b{ font-weight:600; }
-.vscreen{ background:var(--screen); border-radius:10px; border:2px solid #2A3A46; color:var(--sTxt); font-family:var(--cond); display:flex; flex-direction:column; overflow:hidden; height:clamp(520px, 64vh, 760px); position:relative; user-select:none; }
+.vscreen{ background:var(--screen); border-radius:10px; border:2px solid #3A3F43; color:var(--sTxt); font-family:var(--cond); display:flex; flex-direction:column; overflow:hidden; height:clamp(520px, 64vh, 760px); position:relative; user-select:none; }
 body.vent-full .vscreen{ height:calc(100vh - 170px); }
-.vstatus{ display:flex; align-items:stretch; gap:8px; padding:6px 8px; background:linear-gradient(180deg,#10283A,#0B1C2A); border-bottom:1px solid var(--sLine); min-height:46px; }
-.vcat{ display:flex; flex-direction:column; justify-content:center; font-size:12px; color:var(--sDim); padding:0 6px; line-height:1.15; }
-.vcat b{ color:var(--sTxt); font-size:14px; font-weight:600; }
-.vmode{ background:transparent; border:1.5px solid #D9E4EA; color:#fff; border-radius:6px; padding:3px 12px; text-align:left; display:flex; flex-direction:column; justify-content:center; min-width:170px; }
-.vmode .m{ font-size:18px; font-weight:600; line-height:1.1; }
-.vmode .s{ font-size:12px; color:#9DD1F0; }
-.valarm{ flex:1; display:flex; align-items:center; gap:8px; border-radius:6px; padding:0 10px; font-size:15px; font-weight:600; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; border:0; background:transparent; color:inherit; text-align:left; }
+/* Layout follows the Servo-u user's manual (v4.0, 2.4.1): status bar, quick menu (left), display area with
+   mode heading and waveforms, numerical values (right, two columns in ADVANCED view), direct access bar (bottom). */
+.vstatus{ display:flex; align-items:stretch; gap:8px; padding:5px 8px; background:#141618; border-bottom:1px solid var(--sLine); min-height:42px; }
+.vmode{ background:transparent; border:0; color:#fff; padding:2px 4px; display:inline-flex; align-items:center; gap:6px; border-radius:4px; }
+.vmode .m{ font-size:17px; font-weight:600; line-height:1.1; }
+.vmode .m .bk{ color:#7E878D; font-weight:500; } .vmode .m .bk.on{ color:#fff; font-weight:700; }
+.vmode .chev{ color:#9AA3A9; font-size:14px; }
+.vhead{ display:flex; align-items:center; gap:10px; padding:3px 8px; border-bottom:1px solid var(--sLine); background:var(--screen2); min-height:32px; }
+.vhead .s{ font-size:12px; color:var(--sDim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.vlung{ color:#fff; border:1px solid #fff; border-radius:4px; padding:1px 3px; line-height:0; opacity:0; transition:opacity .08s; }
+.vlung.on{ opacity:1; }
+.valarm{ flex:1; display:flex; align-items:center; gap:8px; border-radius:4px; padding:0 10px; font-size:15px; font-weight:600; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; border:0; background:transparent; color:inherit; text-align:left; }
 .valarm.high{ background:#C7281F; color:#fff; animation:flashHi 1s steps(2,start) infinite; }
-.valarm.med{ background:#E9B92B; color:#1A1400; }
-.valarm.info{ background:#16405B; color:#CFE8F6; font-weight:500; }
+.valarm.med{ background:#F2D33A; color:#1A1400; }
+.valarm.info{ background:#2E5B7A; color:#E3F1FA; font-weight:500; }
 @keyframes flashHi{ 50%{ background:#7E1913; } }
-.vicon{ background:#173247; border:1px solid #2B4D66; color:var(--sTxt); border-radius:6px; padding:0 10px; display:flex; align-items:center; gap:6px; font-size:13px; }
+.vicon{ background:#2A2E31; border:1px solid #444A4F; color:var(--sTxt); border-radius:4px; padding:0 10px; display:flex; align-items:center; gap:6px; font-size:13px; }
 .vicon[aria-pressed="true"]{ background:#5A4710; border-color:#E9B92B; color:#FFE8A6; }
-.vpat{ display:flex; flex-direction:column; justify-content:center; font-size:12px; color:var(--sDim); text-align:right; padding:0 4px; line-height:1.15; }
+.vpat{ display:flex; flex-direction:column; justify-content:center; font-size:11.5px; color:var(--sDim); text-align:right; padding:0 4px; line-height:1.15; white-space:nowrap; }
 .vpat b{ color:var(--sTxt); font-size:15px; }
-.vmain{ flex:1; display:grid; grid-template-columns:62px minmax(0,1fr) 236px; grid-template-rows:minmax(0,1fr); min-height:0; }
-.vside{ display:flex; flex-direction:column; gap:4px; padding:6px 5px; overflow-y:auto; min-height:0; background:#0A1A27; border-right:1px solid var(--sLine); }
-.vside button{ flex:none; background:#13293A; border:1px solid #20405A; color:#CFE0EA; border-radius:6px; padding:5px 2px 4px; font-size:11px; display:flex; flex-direction:column; align-items:center; gap:3px; line-height:1.05; }
+.vmain{ flex:1; display:grid; grid-template-columns:66px minmax(0,1fr) 300px; grid-template-rows:minmax(0,1fr); min-height:0; }
+.vside{ display:flex; flex-direction:column; gap:2px; padding:4px 3px; overflow-y:auto; min-height:0; background:#17191B; border-right:1px solid var(--sLine); }
+.vside button{ flex:none; background:transparent; border:1px solid transparent; color:#D5DADD; border-radius:4px; padding:6px 2px 5px; font-size:9.5px; letter-spacing:.02em; text-transform:uppercase; display:flex; flex-direction:column; align-items:center; gap:3px; line-height:1.05; text-align:center; }
+.vside button:hover{ background:#2A2E31; }
 .vside button svg{ width:20px; height:20px; }
-.vside button[aria-pressed="true"]{ background:var(--tile-hi); border-color:#9FD3F5; color:#fff; }
-.vwaves{ position:relative; min-width:0; min-height:0; }
-.vwaves canvas{ position:absolute; inset:0; width:100%; height:100%; display:block; }
-.vreview{ position:absolute; left:8px; right:8px; bottom:6px; display:flex; gap:8px; align-items:center; background:rgba(7,19,29,.85); padding:4px 8px; border-radius:6px; font-size:12px; color:var(--sDim); }
-.vreview input{ flex:1; accent-color:#9FD3F5; }
-.vnums{ min-height:0; border-left:1px solid var(--sLine); display:grid; grid-template-columns:1fr 1fr; grid-auto-rows:min-content; align-content:start; overflow:auto; }
-.nv{ padding:5px 8px 4px; border-bottom:1px solid #12293A; border-right:1px solid #12293A; min-height:52px; }
-.nv .h{ display:flex; justify-content:space-between; font-size:11px; color:var(--sDim); line-height:1.1; gap:4px; }
-.nv .v{ font-size:25px; font-weight:600; line-height:1.05; font-variant-numeric:tabular-nums; margin-top:2px; }
-.nv.big .v{ font-size:30px; }
-.nv.wide{ grid-column:span 2; }
-.nv.cP .v{ color:var(--sP); } .nv.cF .v{ color:var(--sF); } .nv.cV .v{ color:var(--sV); } .nv.cE .v{ color:var(--sE); } .nv.cW .v{ color:#E7EEF2; }
-.nv.dim .v{ color:#56707F; }
-.vbar{ display:flex; gap:5px; padding:6px; background:#0A1A27; border-top:1px solid var(--sLine); overflow-x:auto; }
-.vtile{ flex:1 0 98px; background:var(--tile); border:1px solid #23506F; color:var(--sTxt); border-radius:7px; padding:5px 8px 6px; text-align:left; display:flex; flex-direction:column; min-width:96px; }
-.vtile .h{ display:flex; justify-content:space-between; font-size:11.5px; color:#9FC2D8; gap:4px; }
-.vtile .v{ font-size:24px; font-weight:600; font-variant-numeric:tabular-nums; line-height:1.05; margin-top:2px; }
-.vtile.more{ flex:0 0 86px; align-items:center; justify-content:center; font-size:13px; color:#CFE0EA; background:#173247; }
-.vtile[aria-pressed="true"]{ background:var(--tile-hi); border-color:#9FD3F5; }
-.vstandby{ position:absolute; inset:46px 236px 64px 62px; display:flex; align-items:center; justify-content:center; text-align:center; pointer-events:none; }
-.vstandby div{ background:rgba(10,26,39,.9); border:1px solid #2B4D66; border-radius:10px; padding:14px 20px; font-size:18px; color:#CFE8F6; }
-@media (max-width: 760px){ .vmain{ grid-template-columns:52px minmax(0,1fr); } .vnums{ grid-column:1 / -1; grid-template-columns:repeat(4,1fr); border-left:0; border-top:1px solid var(--sLine); max-height:170px; } .vscreen{ height:auto; min-height:640px; } .vwaves{ min-height:300px; } .vstandby{ inset:46px 0 230px 52px; } }
+.vside button[aria-pressed="true"]{ background:#3A4045; border-color:#8D979D; color:#fff; }
+.vwaves{ position:relative; min-width:0; min-height:0; display:flex; flex-direction:column; }
+.vcv{ position:relative; flex:1; min-height:0; }
+.vcv canvas{ position:absolute; inset:0; width:100%; height:100%; display:block; }
+.vreview{ position:absolute; left:8px; right:8px; bottom:6px; display:flex; gap:8px; align-items:center; background:rgba(20,22,24,.88); padding:4px 8px; border-radius:6px; font-size:12px; color:var(--sDim); }
+.vreview input{ flex:1; accent-color:#C9D2D7; }
+.vnums{ min-height:0; border-left:1px solid var(--sLine); overflow:auto; background:var(--screen); }
+.vgrid{ display:grid; grid-template-columns:1.12fr 1fr; }
+.vcol{ display:flex; flex-direction:column; }
+.vcol.a .nv{ flex:2 1 0; } .vcol.b .nv{ flex:1 1 0; }
+.nv{ position:relative; padding:4px 8px 3px; border-bottom:1px solid #33383C; border-right:1px solid #33383C; min-height:46px; }
+.vcol.a .nv{ min-height:94px; display:flex; flex-direction:column; }
+.nv .h{ display:flex; justify-content:space-between; font-size:11px; color:#D5DADD; line-height:1.1; gap:4px; }
+.nv .u{ font-size:10px; color:var(--sDim); line-height:1; }
+.nv .v{ font-size:23px; font-weight:500; line-height:1.05; font-variant-numeric:tabular-nums; margin-top:1px; }
+.vcol.a .nv .v{ font-size:40px; margin:auto 0 0; }
+.nv .lim{ position:absolute; right:6px; top:4px; bottom:4px; display:flex; flex-direction:column; justify-content:space-between; align-items:flex-end; font-size:10.5px; color:#B6BEC3; font-variant-numeric:tabular-nums; }
+.nv.cP .v{ color:var(--sP); } .nv.cF .v{ color:var(--sF); } .nv.cV .v{ color:var(--sV); } .nv.cE .v{ color:var(--sE); } .nv.cW .v{ color:#ECEFF1; }
+.nv.dim .v{ color:#6B7378; }
+.nv.alarm{ background:#5C1612; }
+.vmore{ font-size:10.5px; letter-spacing:.04em; text-transform:uppercase; color:var(--sDim); padding:6px 8px 3px; border-bottom:1px solid #33383C; }
+.vgrid.more{ grid-template-columns:1fr 1fr; }
+.vbar{ display:flex; gap:4px; padding:5px; background:#17191B; border-top:1px solid var(--sLine); overflow-x:auto; align-items:stretch; }
+.vtile{ flex:1 0 92px; background:var(--tile); border:1px solid #3E4449; color:var(--sTxt); border-radius:4px; padding:4px 8px 5px; text-align:left; display:flex; flex-direction:column; min-width:88px; }
+.vtile .h{ display:flex; justify-content:space-between; font-size:10.5px; color:#C3CACF; gap:4px; line-height:1.1; }
+.vtile .v{ font-size:24px; font-weight:500; font-variant-numeric:tabular-nums; line-height:1.05; margin-top:auto; color:#fff; }
+.vtile.inactive .v, .vtile.inactive .h{ color:#7E878D; }
+.vtile.boost{ flex:0 0 74px; min-width:70px; background:#2A2E31; margin-right:10px; }
+.vtile.boost .v{ font-size:22px; margin:0; } .vtile.boost .h{ order:2; font-size:9.5px; text-transform:uppercase; }
+.vtile.boost[aria-pressed="true"]{ background:#4A5157; border-color:#fff; }
+.vtile.more{ flex:0 0 48px; min-width:44px; align-items:center; justify-content:center; font-size:22px; color:#5BC85A; background:#2A2E31; }
+.vtile[aria-pressed="true"]{ background:var(--tile-hi); border-color:#C9D2D7; }
+.vstandby{ position:absolute; inset:74px 300px 62px 66px; display:flex; align-items:center; justify-content:center; text-align:center; pointer-events:none; }
+.vstandby div{ background:rgba(23,25,27,.92); border:1px solid #4A5157; border-radius:8px; padding:14px 20px; font-size:18px; color:#E3E7EA; }
+@media (max-width: 760px){ .vmain{ grid-template-columns:52px minmax(0,1fr); } .vnums{ grid-column:1 / -1; border-left:0; border-top:1px solid var(--sLine); max-height:230px; } .vcol.a .nv{ min-height:64px; } .vcol.a .nv .v{ font-size:30px; } .vscreen{ height:auto; min-height:700px; } .vwaves{ min-height:330px; } .vstandby{ inset:74px 0 290px 52px; } }
 
 /* ---------- bedside monitor ---------- */
 .mon-housing{ background:var(--mon); border-radius:16px; padding:10px; border:1px solid #1A1F23; box-shadow:0 10px 22px rgba(20,30,40,.25); }
@@ -300,16 +319,17 @@ textarea{ width:100%; }
     <div class="vent-housing">
       <div class="vscreen" id="vscreen">
         <div class="vstatus">
-          <div class="vcat"><span id="vCatTop">Pediatric</span><b id="vCatTx">Invasive</b></div>
-          <button class="vmode" id="vModeBox" title="Change ventilation mode"><span class="m" id="vModeName">—</span><span class="s" id="vModeSub">&nbsp;</span></button>
           <button class="valarm" id="vAlarm" title="Active alarms"></button>
           <button class="vicon" id="vMute" aria-pressed="false" title="Audio pause (2 minutes). The underlying problem is not fixed."><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 6h3l4-3v10l-4-3H2z" fill="currentColor"/><path d="M11 5l4 6M15 5l-4 6" stroke="currentColor" stroke-width="1.6"/></svg><span id="vMuteTx">Audio pause</span></button>
-          <div class="vpat"><span id="vPatAge">—</span><b id="vPatWt">— kg</b></div>
-          <div class="vpat"><span>Clock</span><b id="vClock">00:00</b></div>
+          <div class="vpat"><span><span id="vCatTop">Pediatric</span> · <span id="vCatTx">Invasive</span> · <span id="vPatAge">—</span></span><b>BW <span id="vPatWt">— kg</span></b></div>
+          <div class="vpat"><span>Time</span><b id="vClock">00:00</b></div>
         </div>
         <div class="vmain">
-          <nav class="vside" id="vSide" aria-label="Ventilator menu"></nav>
-          <div class="vwaves" id="vWaves"><canvas id="cWaves"></canvas><div class="vreview" id="vReview" hidden><span>Review</span><input type="range" id="reviewRange" min="0" max="60" step="0.1" value="0" aria-label="Review recent breaths"><span id="reviewTx">now</span></div></div>
+          <nav class="vside" id="vSide" aria-label="Quick menu"></nav>
+          <div class="vwaves" id="vWaves">
+            <div class="vhead"><button class="vmode" id="vModeBox" title="Change ventilation mode"><span class="m" id="vModeName">—</span><span class="chev" aria-hidden="true">⌄</span></button><span class="vlung" id="vLung" title="Patient-triggered breath" aria-hidden="true"><svg viewBox="0 0 20 20" width="18" height="18"><path d="M10 3v6M10 9c-1 1-2 1.5-3 1.5M10 9c1 1 2 1.5 3 1.5M7.5 5.5C5 6 3 9 3 13c0 2 1 3 2.5 3S8 15 8 13V8M12.5 5.5C15 6 17 9 17 13c0 2-1 3-2.5 3S12 15 12 13V8" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg></span><span class="s" id="vModeSub">&nbsp;</span></div>
+            <div class="vcv"><canvas id="cWaves"></canvas><div class="vreview" id="vReview" hidden><span>Review</span><input type="range" id="reviewRange" min="0" max="60" step="0.1" value="0" aria-label="Review recent breaths"><span id="reviewTx">now</span></div></div>
+          </div>
           <div class="vnums" id="vNums"></div>
         </div>
         <div class="vstandby" id="vStandby" hidden><div>Ventilator in standby<br><small>Patient on manual ventilation</small></div></div>
@@ -367,13 +387,13 @@ const lerp = (a, b, t) => a + (b - a) * t;
 const ease = (cur, target, dt, tau) => cur + (target - cur) * (1 - Math.exp(-dt / Math.max(tau, 1e-6)));
 function satFromPO2(p) { if (p <= 0) return 0; return 1 / (23400 / (p * p * p + 150 * p) + 1); }
 function po2FromSat(s) { s = clamp(s, 0.005, 0.996); let lo = 0.5, hi = 700; for (let i = 0; i < 40; i++) { const m = (lo + hi) / 2; if (satFromPO2(m) < s) lo = m; else hi = m; } return (lo + hi) / 2; }
-function ettResistance(d) { return 60 * Math.pow(3.0 / d, 4.75) + 0.6; } // cmH2O/(L/s), approximate, flow-independent
+function ettResistance(d) { return 33 * Math.pow(3.5 / d, 3.3); } // cmH2O/(L/s) at moderate flow (≈55 for 3.0, 21 for 4.0, 7 for 5.5, 3.4 for 7.0); flow-independent
 function bsaFromWt(w) { return (4 * w + 7) / (w + 90); }
 
 const MODEL_NOTES = [
-  'Respiratory system: single-compartment lung (one compliance, one resistance) with mild overdistension stiffening above ~25 cmH2O elastic pressure. Endotracheal tube resistance scales roughly with 1/diameter^4.75 and is flow-independent.',
+  'Respiratory system: single-compartment lung (one compliance, one resistance) with mild overdistension stiffening above ~25 cmH2O elastic pressure. Endotracheal tube resistance follows published pediatric values at moderate flow (about 55, 33, 21, 10, 7 and 3.4 cmH2O/L/s for 3.0, 3.5, 4.0, 5.0, 5.5 and 7.0 mm tubes) and is flow-independent. Time constants (≈0.1 s neonate to ≈0.2 s adolescent) set how long flow-cycled PS breaths last.',
   'Patient effort: a sinusoidal inspiratory muscle pressure (Pmus) generator. Drive scales with sedation, PaCO2 (chemoreflex) and hypoxemia. Edi is modelled as Pmus divided by a fixed neuro-ventilatory efficiency (≈0.9 cmH2O/µV) plus tonic activity.',
-  'Ventilator: pressure source with set rise time that sags with patient effort (up to 2.5 cmH2O; largest at low support and while effort is rising), so spontaneous breaths dip Paw on CPAP and scallop it on PS/PC breaths; Paw rises slightly if the patient starts exhaling before cycling, and each breath has a small random pressure overshoot (≤ 2.5 cmH2O, larger on supported breaths). Patient effort varies breath to breath (amplitude ±22%, timing ±14%, inspiratory time ±12%, sighs ~3% of breaths) from a seeded random source. Flow trigger compares patient flow (leak compensation on) or net measured flow (leak compensation off) to the trigger setting. PS/VS breaths cycle at the End-insp. % of peak flow; NAVA cycles at 70% of peak Edi.',
+  'Ventilator: pressure source with set rise time that sags with patient effort (up to 1.5 cmH2O; largest at low support and while effort is rising), so spontaneous breaths dip Paw on CPAP and scallop it on PS/PC breaths; Paw rises slightly (≤ 0.6 cmH2O) if the patient starts exhaling before cycling, and each breath has a small random pressure overshoot (≤ 1.2 cmH2O), so peak pressure stays close to PEEP + set level (e.g. PEEP 5 + PS 10 gives PIP ≈ 15–16). The displayed Ppeak is the last breath\'s peak, so it matches the trace on screen. Patient effort varies breath to breath (amplitude ±22%, timing ±14%, inspiratory time ±12%, sighs ~3% of breaths) from a seeded random source. Flow trigger compares patient flow (leak compensation on) or net measured flow (leak compensation off) to the trigger setting. PS/VS breaths cycle at the End-insp. % of peak flow; NAVA cycles at 70% of peak Edi.',
   'PRVC and VS adjust pressure breath-by-breath toward the target using expiratory VT, in steps of no more than 3 cmH2O, and never above the upper pressure limit minus 5 cmH2O. The exact Getinge regulation algorithm is proprietary and is not reproduced.',
   'SIMV: a mandatory breath is due every 60/rate seconds; a patient trigger in the last 30% of the SIMV period delivers a synchronized mandatory breath, earlier triggers receive PS.',
   'Automode: switches from controlled to supported after two consecutive patient-triggered breaths and back to controlled when no trigger occurs within the trigger timeout. The real Servo-u timeout adapts over successive breaths; here it is fixed at the set value.',
@@ -389,16 +409,16 @@ const MODEL_NOTES = [
 
 /* ---------- Patient presets ---------- */
 const PRESETS = {
-  neonate: { label: 'Neonate', wt: 3.2, age: '6 days', ett: 3.5, cuffed: false, C: 1.5, Raw: 22, rr: 45, tiN: 0.36, hr: 150, map: 52, pp: 22, vo2kg: 7.0, hb: 14, frcKg: 22, vdKg: 1.5, vdApp: 2.5,
+  neonate: { label: 'Neonate', wt: 3.2, age: '6 days', ett: 3.5, cuffed: false, C: 1.5, Raw: 30, rr: 45, tiN: 0.36, hr: 150, map: 52, pp: 22, vo2kg: 7.0, hb: 14, frcKg: 22, vdKg: 1.5, vdApp: 2.5,
     vent: { vt: 18, rate: 30, ti: 0.40, rise: 0.05, ps: 10, pc: 15, peep: 5, fio2: 40, trig: 0.25, cycle: 30, apnea: 8, bpc: 15, brate: 30, bti: 0.4, nava: 1.0, editrig: 0.5, bps: 10 },
     alarms: { pHigh: 30, peepLow: 3, mvLow: 0.35, mvHigh: 1.6, rrLow: 20, rrHigh: 80, vteLow: 11, vteHigh: 30, etLow: 25, etHigh: 60, leakHigh: 40 } },
-  infant: { label: 'Infant', wt: 8, age: '7 months', ett: 4.0, cuffed: false, C: 3.7, Raw: 14, rr: 32, tiN: 0.5, hr: 125, map: 62, pp: 30, vo2kg: 7.0, hb: 12, frcKg: 24, vdKg: 1.6, vdApp: 4,
+  infant: { label: 'Infant', wt: 8, age: '7 months', ett: 4.0, cuffed: false, C: 3.7, Raw: 25, rr: 32, tiN: 0.5, hr: 125, map: 62, pp: 30, vo2kg: 7.0, hb: 12, frcKg: 24, vdKg: 1.6, vdApp: 4,
     vent: { vt: 56, rate: 22, ti: 0.60, rise: 0.07, ps: 10, pc: 15, peep: 5, fio2: 35, trig: 0.4, cycle: 30, apnea: 10, bpc: 15, brate: 22, bti: 0.6, nava: 1.0, editrig: 0.5, bps: 10 },
     alarms: { pHigh: 35, peepLow: 3, mvLow: 0.8, mvHigh: 2.6, rrLow: 14, rrHigh: 60, vteLow: 35, vteHigh: 90, etLow: 25, etHigh: 60, leakHigh: 40 } },
-  child: { label: 'Young child', wt: 20, age: '6 years', ett: 5.5, cuffed: true, C: 10, Raw: 6, rr: 22, tiN: 0.8, hr: 100, map: 70, pp: 40, vo2kg: 5.5, hb: 12, frcKg: 28, vdKg: 1.6, vdApp: 8,
+  child: { label: 'Young child', wt: 20, age: '6 years', ett: 5.5, cuffed: true, C: 10, Raw: 12, rr: 22, tiN: 0.8, hr: 100, map: 70, pp: 40, vo2kg: 5.5, hb: 12, frcKg: 28, vdKg: 1.6, vdApp: 8,
     vent: { vt: 140, rate: 18, ti: 0.80, rise: 0.10, ps: 10, pc: 17, peep: 5, fio2: 35, trig: 0.8, cycle: 30, apnea: 15, bpc: 17, brate: 18, bti: 0.8, nava: 1.0, editrig: 0.5, bps: 10 },
     alarms: { pHigh: 35, peepLow: 3, mvLow: 1.5, mvHigh: 5, rrLow: 10, rrHigh: 45, vteLow: 90, vteHigh: 220, etLow: 25, etHigh: 60, leakHigh: 30 } },
-  adolescent: { label: 'Adolescent', wt: 50, age: '15 years', ett: 7.0, cuffed: true, C: 23, Raw: 4, rr: 16, tiN: 1.0, hr: 85, map: 80, pp: 45, vo2kg: 4.0, hb: 13, frcKg: 30, vdKg: 1.6, vdApp: 15,
+  adolescent: { label: 'Adolescent', wt: 50, age: '15 years', ett: 7.0, cuffed: true, C: 23, Raw: 7, rr: 16, tiN: 1.0, hr: 85, map: 80, pp: 45, vo2kg: 4.0, hb: 13, frcKg: 30, vdKg: 1.6, vdApp: 15,
     vent: { vt: 350, rate: 14, ti: 1.0, rise: 0.15, ps: 10, pc: 17, peep: 5, fio2: 35, trig: 1.5, cycle: 30, apnea: 20, bpc: 17, brate: 14, bti: 1.0, nava: 1.0, editrig: 0.5, bps: 10 },
     alarms: { pHigh: 40, peepLow: 3, mvLow: 3, mvHigh: 10, rrLow: 8, rrHigh: 35, vteLow: 230, vteHigh: 520, etLow: 25, etHigh: 60, leakHigh: 30 } }
 };
@@ -424,31 +444,32 @@ function defaultPhys(presetKey) {
 }
 
 const MODES = {
-  simv_prvc: { name: 'SIMV (PRVC) + PS', keys: ['vt', 'rate', 'peep', 'fio2', 'ti', 'ps', 'rise', 'cycle', 'trig'], bar: ['vt', 'rate', 'peep', 'fio2', 'ti', 'ps'] },
-  simv_pc: { name: 'SIMV (PC) + PS', keys: ['pc', 'rate', 'peep', 'fio2', 'ti', 'ps', 'rise', 'cycle', 'trig'], bar: ['pc', 'rate', 'peep', 'fio2', 'ti', 'ps'] },
-  ps_cpap: { name: 'PS/CPAP', keys: ['ps', 'peep', 'fio2', 'trig', 'rise', 'cycle', 'apnea', 'bpc', 'brate', 'bti'], bar: ['ps', 'peep', 'fio2', 'trig', 'cycle', 'apnea'] },
-  auto_pc_ps: { name: 'Automode PC ⇄ PS', keys: ['pc', 'rate', 'ti', 'ps', 'peep', 'fio2', 'rise', 'cycle', 'trig', 'apnea'], bar: ['pc', 'rate', 'ps', 'peep', 'fio2', 'ti'] },
-  auto_prvc_vs: { name: 'Automode PRVC ⇄ VS', keys: ['vt', 'rate', 'ti', 'peep', 'fio2', 'rise', 'cycle', 'trig', 'apnea'], bar: ['vt', 'rate', 'peep', 'fio2', 'ti', 'apnea'] },
-  nava: { name: 'NAVA', keys: ['nava', 'editrig', 'peep', 'fio2', 'trig', 'apnea', 'bpc', 'brate', 'bti', 'bps', 'cycle'], bar: ['nava', 'peep', 'fio2', 'editrig', 'apnea', 'bpc'] }
+  // bar = direct access bar, in Servo-u order: O2 conc., PEEP, then the mode's main settings (backup settings last)
+  simv_prvc: { name: 'SIMV (PRVC) + PS', keys: ['vt', 'rate', 'peep', 'fio2', 'ti', 'ps', 'rise', 'cycle', 'trig'], bar: ['fio2', 'peep', 'rate', 'vt', 'ti', 'ps'] },
+  simv_pc: { name: 'SIMV (PC) + PS', keys: ['pc', 'rate', 'peep', 'fio2', 'ti', 'ps', 'rise', 'cycle', 'trig'], bar: ['fio2', 'peep', 'rate', 'pc', 'ti', 'ps'] },
+  ps_cpap: { name: 'PS/CPAP', keys: ['ps', 'peep', 'fio2', 'trig', 'rise', 'cycle', 'apnea', 'bpc', 'brate', 'bti'], bar: ['fio2', 'peep', 'ps', 'cycle', 'brate', 'bpc'] },
+  auto_pc_ps: { name: 'Automode PC ⇄ PS', keys: ['pc', 'rate', 'ti', 'ps', 'peep', 'fio2', 'rise', 'cycle', 'trig', 'apnea'], bar: ['fio2', 'peep', 'rate', 'pc', 'ti', 'ps'] },
+  auto_prvc_vs: { name: 'Automode PRVC ⇄ VS', keys: ['vt', 'rate', 'ti', 'peep', 'fio2', 'rise', 'cycle', 'trig', 'apnea'], bar: ['fio2', 'peep', 'rate', 'vt', 'ti', 'apnea'] },
+  nava: { name: 'NAVA', keys: ['nava', 'editrig', 'peep', 'fio2', 'trig', 'apnea', 'bpc', 'brate', 'bti', 'bps', 'cycle'], bar: ['fio2', 'peep', 'nava', 'editrig', 'brate', 'bpc'] }
 };
 
 const PARAMS = {
-  vt: { label: 'Tidal volume', short: 'VT', unit: 'mL', min: 5, max: 800, dec: 0 },
+  vt: { label: 'Tidal volume', short: 'Tidal volume', unit: 'ml', min: 5, max: 800, dec: 0 },
   rate: { label: 'Resp. rate', short: 'RR', unit: 'b/min', min: 4, max: 80, dec: 0, step: 1 },
-  pc: { label: 'PC above PEEP', short: 'PC ↑PEEP', unit: 'cmH₂O', min: 2, max: 50, dec: 0, step: 1 },
-  ps: { label: 'PS above PEEP', short: 'PS ↑PEEP', unit: 'cmH₂O', min: 0, max: 40, dec: 0, step: 1 },
+  pc: { label: 'PC above PEEP', short: 'PC above PEEP', unit: 'cmH₂O', min: 2, max: 50, dec: 0, step: 1 },
+  ps: { label: 'PS above PEEP', short: 'PS above PEEP', unit: 'cmH₂O', min: 0, max: 40, dec: 0, step: 1 },
   peep: { label: 'PEEP', short: 'PEEP', unit: 'cmH₂O', min: 0, max: 20, dec: 0, step: 1 },
-  fio2: { label: 'O₂ concentration', short: 'O₂', unit: '%', min: 21, max: 100, dec: 0, step: 1 },
+  fio2: { label: 'O₂ concentration', short: 'O₂ conc.', unit: '%', min: 21, max: 100, dec: 0, step: 1 },
   ti: { label: 'Inspiratory time', short: 'Ti', unit: 's', min: 0.2, max: 3, dec: 2, step: 0.05 },
   rise: { label: 'Insp. rise time', short: 'Rise', unit: 's', min: 0, max: 0.4, dec: 2, step: 0.01 },
   cycle: { label: 'End inspiration', short: 'End insp.', unit: '%', min: 1, max: 70, dec: 0, step: 1 },
   trig: { label: 'Trigger (flow)', short: 'Trigger', unit: 'L/min', min: 0.05, max: 4, dec: 2, step: 0.05 },
   apnea: { label: 'Apnea time', short: 'Apnea', unit: 's', min: 2, max: 45, dec: 0, step: 1 },
-  bpc: { label: 'Backup PC above PEEP', short: 'Bkup PC', unit: 'cmH₂O', min: 2, max: 50, dec: 0, step: 1 },
-  brate: { label: 'Backup rate', short: 'Bkup RR', unit: 'b/min', min: 4, max: 80, dec: 0, step: 1 },
-  bti: { label: 'Backup Ti', short: 'Bkup Ti', unit: 's', min: 0.2, max: 3, dec: 2, step: 0.05 },
-  bps: { label: 'Backup PS above PEEP', short: 'Bkup PS', unit: 'cmH₂O', min: 0, max: 40, dec: 0, step: 1 },
-  nava: { label: 'NAVA level', short: 'NAVA', unit: 'cmH₂O/µV', min: 0, max: 15, dec: 1, step: 0.1 },
+  bpc: { label: 'Backup PC above PEEP', short: 'Backup PC above PEEP', unit: 'cmH₂O', min: 2, max: 50, dec: 0, step: 1 },
+  brate: { label: 'Backup rate', short: 'Backup RR', unit: 'b/min', min: 4, max: 80, dec: 0, step: 1 },
+  bti: { label: 'Backup Ti', short: 'Backup Ti', unit: 's', min: 0.2, max: 3, dec: 2, step: 0.05 },
+  bps: { label: 'Backup PS above PEEP', short: 'Backup PS', unit: 'cmH₂O', min: 0, max: 40, dec: 0, step: 1 },
+  nava: { label: 'NAVA level', short: 'NAVA level', unit: 'cmH₂O/µV', min: 0, max: 15, dec: 1, step: 0.1 },
   editrig: { label: 'Edi trigger', short: 'Edi trig', unit: 'µV', min: 0.1, max: 2, dec: 1, step: 0.1 }
 };
 function paramStep(key, wt) {
@@ -481,7 +502,7 @@ class Engine {
     this.phase = 'exp'; this.expStart = 0; this.cycleStart = -60 / this.set.rate * 0.5; this.lastAnyBreath = 0; this.lastCtrl = -99; this.lastBackup = -99;
     this.cur = null; this.breaths = []; this.prvcP = clamp(this.set.vt / Math.max(1, this.Ceff) , 5, 25); this.vsP = this.prvcP;
     this.autoSub = 'ctrl'; this.consec = 0; this.backup = false; this.ediLost = false; this.regLimited = false; this.pHighHit = 0;
-    this.hold = null; this.holdReq = null; this.holdResult = null;
+    this.hold = null; this.holdReq = null; this.holdResult = null; this.boostEnd = null;
     this.dispVol = 0; this.pawWin = []; this.PmeanAvg = this.set.peep + 3; this.pawAcc = 0; this.pawN = 0;
     this.seed = (cfg.seed || 20261105) >>> 0;
     this.neural = { start: -0.3, period: 60 / P.rr, ti: P.tiN, pmax: 0, apneic: false, starts: 0, expAtOnset: true };
@@ -588,9 +609,9 @@ class Engine {
     this.pmusLag += (this.Pmus - this.pmusLag) * Math.min(1, dt / 0.1);
     if (!p.bagging && !this.hold && this.phase === 'insp' && this.cur && !p.disconnected) {
       const b = this.cur, lvl = Math.max(0, Paw - PEEP), tin = this.t - b.start;
-      if (this.Pmus > 0.05) Paw -= clamp(0.18 * this.Pmus * 4 / (lvl + 4) + 0.3 * Math.max(0, this.Pmus - this.pmusLag), 0, 2.5);
+      if (this.Pmus > 0.05) Paw -= clamp(0.12 * this.Pmus * 4 / (lvl + 4) + 0.2 * Math.max(0, this.Pmus - this.pmusLag), 0, 1.5);
       // patient starting to exhale before the breath ends pushes pressure up (end-inspiratory bump)
-      Paw += clamp(0.35 * Math.max(0, this.pmusLag - this.Pmus), 0, 1.5);
+      Paw += clamp(0.2 * Math.max(0, this.pmusLag - this.Pmus), 0, 0.6);
       // controller overshoot just after the pressure rise, different every breath
       if (lvl > 1 && tin >= s.rise) Paw += b.ov * Math.exp(-(tin - s.rise) / 0.12);
     }
@@ -753,7 +774,7 @@ class Engine {
     else if (kind === 'bag') { cycle = 'none'; }
     const mand = kind === 'pc' || kind === 'prvc' || kind === 'bpc';
     this.cur = { start: this.t, kind, triggered, mand, level, ti, cycle, peakQ: 0, VTi: 0, VTe: 0, Vstart: this.V, Vmax: this.V, Pmax: 0, pawInt: 0, dur: 0, ediPk: 0, ediMin: this.ediExpMin < 50 ? this.ediExpMin : this.EdiMeas, endInspQ: 0, peep: this.Paw };
-    this.cur.ov = kind === 'bag' || kind === 'nava' ? 0 : Math.min(2.5, Math.abs(this.gauss()) * (kind === 'ps' || kind === 'vs' || kind === 'bps' ? 1.3 : 0.7));
+    this.cur.ov = kind === 'bag' || kind === 'nava' ? 0 : Math.min(1.2, Math.abs(this.gauss()) * (kind === 'ps' || kind === 'vs' || kind === 'bps' ? 0.6 : 0.35));
     this.phase = 'insp'; this.dispVol = 0; this.lastAnyBreath = this.t;
     if (kind !== 'bag') { if (triggered) { const n = this.neural; if (this.t - n.start < n.ti + 0.25) n.starts++; } }
     if (triggered && this.annots) this.annot('trig', this.t);
@@ -916,7 +937,7 @@ class Engine {
     if (warming) { const eq = clamp(0.863 * g.VCO2 / Math.max(VA / 1000, 0.05), 15, 120); g.PaCO2 = ease(g.PaCO2, eq, dtp, 4); }
     else g.PaCO2 = clamp(g.PaCO2 + (g.VCO2 - elim) / K * dtp / 60, 12, 160);
     // ---- alveolar O2 (mass balance over FRC)
-    const FiO2 = p.bagging ? 1.0 : p.disconnected ? 0.21 : p.extubated ? 0.28 : s.fio2 / 100;
+    const FiO2 = p.bagging ? 1.0 : p.disconnected ? 0.21 : p.extubated ? 0.28 : this.o2Boost() ? 1.0 : s.fio2 / 100;
     const FRC = Math.max(5, P.frcKg * p.wt * (1 - 0.45 * g.U) + peep * this.Ceff * 0.6);
     const uptake = g.VO2 * clamp(g.FAO2 * 713 / 45, 0, 1);
     const FAeq = FiO2 - g.PaCO2 / 713 * 0.25; // small CO2 dilution term
@@ -986,6 +1007,7 @@ class Engine {
       if (this.trendAcc >= 2) { this.trendAcc = 0; this.trends.push(this.snapshot()); if (this.trends.length > 900) this.trends.shift(); }
     }
   }
+  o2Boost() { return this.boostEnd != null && this.physT < this.boostEnd; } // Servo-u O2 boost: 100% for 1 minute
   spontSupportIndex() { // fraction of patient work unloaded by ventilator support (very approximate)
     const s = this.set, m = this.mode;
     let sup = 0;
@@ -1097,9 +1119,10 @@ class Engine {
     const leak = VTi > 1 ? clamp((VTi - VTe) / VTi * 100, 0, 100) : 0;
     const ref = lastM || lastB;
     const ti = ref ? ref.tiAct || 0 : 0, te = ref ? ref.te || 0 : 0;
+    const tiL = lastB ? lastB.tiAct || 0 : 0, teL = lastB ? lastB.te || 0 : 0;
     const discon = this.phys.disconnected && !this.phys.bagging;
     return {
-      Ppeak: discon ? 0.3 : Ppk, Pmean: this.PmeanAvg, PEEP: discon ? 0.3 : peepM, VTi: discon ? 0 : VTi, VTe: discon ? 0 : VTe,
+      Ppeak: discon ? 0.3 : lastB ? lastB.Pmax : Ppk, PpeakAvg: discon ? 0.3 : Ppk, tiTtot: tiL > 0 && teL > 0 ? tiL / (tiL + teL) : null, Pmean: this.PmeanAvg, PEEP: discon ? 0.3 : peepM, VTi: discon ? 0 : VTi, VTe: discon ? 0 : VTe,
       VTkg: (discon ? 0 : VTe) / this.phys.wt, RR: nTot * 60 / span, RRsp: nSp * 60 / span, RRmand: nMand * 60 / span,
       MVe: discon ? 0 : vteSum * 60 / span / 1000, MVsp: vteSp * 60 / span / 1000,
       Cdyn: Ppk - peepM > 1 ? VTe / (Ppk - peepM) : null, leak, ti, te, ie: ti > 0 && te > 0 ? te / ti : null,
@@ -1218,7 +1241,7 @@ const LESSONS = [
       <tr><td>Automode PC ⇄ PS</td><td>PC settings + PS + trigger timeout</td><td>Switches controlled ⇄ supported</td><td>VT falls</td></tr>
       <tr><td>Automode PRVC ⇄ VS</td><td>Target VT, rate, Ti, trigger timeout</td><td>PRVC ⇄ volume support</td><td>Pressure rises</td></tr>
       <tr><td>NAVA</td><td>NAVA level, Edi trigger, backup</td><td>Pressure ∝ Edi</td><td>Patient raises Edi; VT may fall</td></tr></table>
-      <p>Two breath types matter at the bedside: <b>mandatory</b> (machine-cycled by time) and <b>spontaneous</b> (patient-triggered and patient- or flow-cycled). On this ventilator screen, mandatory breaths have a steel-blue marker under the pressure curve; supported breaths are green, NAVA pink, backup orange, and a small triangle marks a patient trigger.</p>` },
+      <p>Two breath types matter at the bedside: <b>mandatory</b> (machine-cycled by time) and <b>spontaneous</b> (patient-triggered and patient- or flow-cycled). As on the Servo-u, a patient-triggered breath has the start of its inspiratory flow drawn in white and a lung symbol flashes beside the mode name. This teaching screen also adds a colored marker under the pressure curve: steel-blue for mandatory breaths, green for supported, pink for NAVA and orange for backup.</p>` },
     { type: 'demo', html: `<p>This infant is in <b>Automode PRVC ⇄ VS</b> with moderate respiratory drive. Watch the mode box at the top of the ventilator: after two consecutive patient-triggered breaths it switches to <b>VS</b>. Open Controls &gt; Patient and drag Sedation to maximum: once no trigger arrives within the trigger timeout, Automode returns to PRVC.</p>`, setup: (a) => a.loadCase({ preset: 'infant', mode: 'auto_prvc_vs', phys: { sedation: 0.15, drive: 0.5 } }) },
     { type: 'task', html: `<p><b>Exercise.</b> Change the mode from SIMV (PC) + PS to <b>SIMV (PRVC) + PS</b> using <i>Modes</i> on the ventilator's left menu, with a target VT of 6–8 mL/kg for this 8 kg infant (48–64 mL).</p>`,
       setup: (a) => a.loadCase({ preset: 'infant', mode: 'simv_pc' }),
@@ -1255,7 +1278,7 @@ const LESSONS = [
     { type: 'read', html: `<p><b>Pressure–time</b> (yellow): square-ish in PC/PRVC/PS; a dip before the breath marks a trigger. <b>Flow–time</b> (green): inspiration up, expiration down. Expiratory flow that has not returned to zero when the next breath starts = <b>incomplete exhalation / auto-PEEP</b>. Small flow deflections without a breath = <b>missed efforts</b>. <b>Volume–time</b> (blue): should return to baseline; a trace that never returns suggests a <b>leak</b> (VTi &gt; VTe).</p><p>Loops: the P–V loop flattens and bends toward the pressure axis with overdistension ("beaking"); the F–V loop's expiratory limb scoops with obstruction and does not reach zero with trapping. Two breaths stacked within one effort = <b>double triggering</b>.</p>` },
     { type: 'demo', html: `<p>Turn on <b>Annotate waveforms</b> in Controls &gt; Teaching overlays. Use Controls &gt; Complications to add a leak, then airway resistance. Freeze the display (ventilator menu) to review breaths.</p>`, setup: (a) => a.loadCase({ preset: 'infant', mode: 'simv_prvc', phys: { sedation: 0.3 } }) },
     { type: 'quiz', q: 'Look at the ventilator now (a problem has been added). The volume trace does not return to baseline and VTi exceeds VTe by ~30%. This is…', setup: (a) => a.loadCase({ preset: 'child', mode: 'simv_prvc', phys: { leak: 0.35, cuffed: false } }), o: ['Air trapping', 'Leak', 'Double triggering', 'Normal'], a: 1, e: 'Inspired volume escapes before it can be measured on expiration.' },
-    { type: 'quiz', q: 'Now: expiratory flow does not reach zero before the next mandatory breath. This indicates…', setup: (a) => a.loadCase({ preset: 'child', mode: 'simv_pc', phys: { Rfactor: 8, sedation: 0.95 }, settings: { rate: 32, ti: 1.0, pc: 20 } }), o: ['Leak', 'Incomplete exhalation with auto-PEEP', 'Low compliance', 'Over-sensitive trigger'], a: 1, e: 'Lengthen expiratory time (lower rate, shorter Ti) and treat resistance. An expiratory hold measures total PEEP.' },
+    { type: 'quiz', q: 'Now: expiratory flow does not reach zero before the next mandatory breath. This indicates…', setup: (a) => a.loadCase({ preset: 'child', mode: 'simv_pc', phys: { Rfactor: 3.5, sedation: 0.95 }, settings: { rate: 32, ti: 1.0, pc: 20 } }), o: ['Leak', 'Incomplete exhalation with auto-PEEP', 'Low compliance', 'Over-sensitive trigger'], a: 1, e: 'Lengthen expiratory time (lower rate, shorter Ti) and treat resistance. An expiratory hold measures total PEEP.' },
     { type: 'quiz', q: 'Now: the patient\'s effort (watch the flow trace in expiration) produces small inspiratory deflections that are not followed by a breath. Most likely?', setup: (a) => a.loadCase({ preset: 'infant', mode: 'simv_prvc', phys: { drive: 0.75, sedation: 0.05 }, settings: { trig: 2.0 } }), o: ['Missed (ineffective) triggering', 'Auto-triggering', 'Leak', 'Pneumothorax'], a: 0, e: 'The trigger is too insensitive for this patient (or auto-PEEP must be overcome first). Reduce trigger flow; consider NAVA.' }
   ] },
   { id: 'L7', title: 'Arterial blood gas interpretation', steps: [
@@ -1387,7 +1410,7 @@ const SCENARIOS = [
     ], critical: [] },
   { id: 'S6', title: 'Air trapping / auto-PEEP', short: 'Air trapping', domains: ['wave', 'mech', 'cardio'],
     brief: '2-year-old, 12 kg, with reactive airway disease, POD 1 after VSD repair. Developed bronchospasm after a transport to CT. Wheezy, and blood pressure has been drifting down over the last 20 minutes.',
-    setup: { preset: 'child', phys: { wt: 12, ett: 4.5, Rfactor: 10, sedation: 1, drive: 0.2, reserve: 0.4, deadSpace: 0.15 }, mode: 'simv_pc', settings: { pc: 20, rate: 32, ti: 1.0, peep: 5, fio2: 40 }, alarms: { vteLow: 50, vteHigh: 140, mvLow: 1.2, mvHigh: 5, rrHigh: 50 } },
+    setup: { preset: 'child', phys: { wt: 12, ett: 4.5, Rfactor: 4.5, sedation: 1, drive: 0.2, reserve: 0.4, deadSpace: 0.15 }, mode: 'simv_pc', settings: { pc: 20, rate: 32, ti: 1.0, peep: 5, fio2: 40 }, alarms: { vteLow: 50, vteHigh: 140, mvLow: 1.2, mvHigh: 5, rrHigh: 50 } },
     questions: [
       { id: 'q1', d: 'wave', pts: 3, q: 'Expiratory flow does not return to zero before the next breath. This means…', o: ['Leak', 'Incomplete exhalation with auto-PEEP', 'Low compliance', 'Patient effort'], a: 1 },
       { id: 'q2', d: 'cardio', pts: 3, q: 'Why is blood pressure falling?', o: ['Sepsis', 'Auto-PEEP raises intrathoracic pressure and reduces venous return', 'Hypocapnia', 'Overdose of PS'], a: 1 },
@@ -1411,12 +1434,12 @@ const SCENARIOS = [
     reasoning: { d: 'cardio', pts: 3, prompt: 'Explain the physiology linking oxygenation, CO2, acidosis, intrathoracic pressure and RV function in this patient.' },
     rubric: [
       { id: 'r1', d: 'emerg', pts: 2, text: 'Called for help', check: (c) => H.help(c) },
-      { id: 'r2', d: 'cardio', pts: 3, text: 'Increased FiO2 to ≥ 80% (ventilator or 100% hand-ventilation)', check: (c) => c.changes.some(x => x.key === 'fio2' && x.to >= 80) || H.did(c, 'bag') },
+      { id: 'r2', d: 'cardio', pts: 3, text: 'Increased FiO2 to ≥ 80% (ventilator or 100% hand-ventilation)', check: (c) => c.changes.some(x => x.key === 'fio2' && x.to >= 80) || H.did(c, 'bag') || H.did(c, 'o2boost') },
       { id: 'r3', d: 'cardio', pts: 2, text: 'Requested sedation/analgesia', check: (c) => H.teamReq(c, 'sedation') },
       { id: 'r4', d: 'cardio', pts: 2, text: 'Requested inhaled nitric oxide', check: (c) => H.teamReq(c, 'ino') },
       { id: 'r5', d: 'abg', pts: 2, text: 'Obtained ABG and avoided acidosis (final pH ≥ 7.35)', check: (c) => H.abgCount(c) >= 1 && c.eng.g.pH >= 7.35 },
       { id: 'r6', d: 'cardio', pts: 1, text: 'Avoided PEEP ≥ 10', check: (c) => c.eng.set.peep < 10 }
-    ], critical: [ { id: 'c1', text: 'FiO2 not increased within 90 s of SpO2 falling below 85%', check: (c) => c.spo2LowT != null && !c.changes.some(x => x.key === 'fio2' && x.to > 50 && x.t - c.spo2LowT <= 90) && !c.log.some(x => x.id === 'bag' && x.t - c.spo2LowT <= 90) }, { id: 'c2', text: 'No call for help during crisis', check: (c) => !H.help(c) } ] },
+    ], critical: [ { id: 'c1', text: 'FiO2 not increased within 90 s of SpO2 falling below 85%', check: (c) => c.spo2LowT != null && !c.changes.some(x => x.key === 'fio2' && x.to > 50 && x.t - c.spo2LowT <= 90) && !c.log.some(x => (x.id === 'bag' || x.id === 'o2boost') && x.t - c.spo2LowT <= 90) }, { id: 'c2', text: 'No call for help during crisis', check: (c) => !H.help(c) } ] },
   { id: 'S8', title: 'Glenn physiology and intrathoracic pressure', short: 'Glenn', domains: ['cardio', 'abg'],
     brief: '7-month-old, 7 kg, POD 1 after bidirectional Glenn, Hb 15. Ventilated with a lung-recruitment approach overnight. SpO2 low 70s, irritable when stimulated, cerebral NIRS low.',
     setup: { preset: 'infant', phys: { wt: 7, cardiac: 'glenn', hb: 15, sedation: 0.6 }, mode: 'simv_pc', settings: { pc: 16, peep: 10, ti: 0.9, rate: 26, fio2: 50, ps: 10 }, alarms: { vteLow: 30, vteHigh: 110 } },
@@ -1495,7 +1518,7 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
 };
 const KIND_CODE = { pc: 1, prvc: 1, ps: 2, vs: 2, nava: 3, bpc: 4, bps: 4, bag: 5 };
-const KIND_COLOR = { 1: '#6F93B0', 2: '#4BD48A', 3: '#FF7AC0', 4: '#F0A044', 5: '#888888', 6: '#B9C7D1' };
+const KIND_COLOR = { 1: '#6F93B0', 2: '#5BC85A', 3: '#FF7AC0', 4: '#F0A044', 5: '#888888', 6: '#B9C7D1' };
 
 const App = {
   eng: new Engine(), op: VARIANT, paused: false, breathSpeed: 1, physAccel: 4, sound: true,
@@ -1619,6 +1642,7 @@ function frame(ts) {
   App.tick2 += dtReal;
   if (App.tick2 >= 0.5) { App.tick2 = 0; renderNums(); renderMonNums(); evalAlarms(); renderStatusBar(); slowUI(); }
   drawWaves(); drawMonitor();
+  const lung = $('#vLung'); if (lung && e.phys) lung.classList.toggle('on', !!(e.cur && e.cur.triggered && e.cur.kind !== 'bag' && e.t - e.cur.start < 0.5));
   requestAnimationFrame(frame);
 }
 
@@ -1646,13 +1670,14 @@ function autoscale(t0, t1) {
 function drawWaves() {
   const c = cv.waves; if (!c) return;
   const { w, h, d } = fitCanvas(c); const x = c.getContext('2d');
-  x.setTransform(1, 0, 0, 1, 0, 0); x.fillStyle = '#07131D'; x.fillRect(0, 0, w, h);
+  x.setTransform(1, 0, 0, 1, 0, 0); x.fillStyle = '#1E2124'; x.fillRect(0, 0, w, h);
   const e = App.eng; if (!e.phys) return;
   if (App.view === 'loops') return drawLoops(x, w, h, d);
   const showE = e.phys.ediCatheter && (e.mode === 'nava' || App.showEdi);
-  const ch = [{ k: 'p', lab: 'Paw', u: 'cmH₂O', col: '#F4D03F' }, { k: 'f', lab: 'Flow', u: 'L/min', col: '#4BD48A' }, { k: 'v', lab: 'Volume', u: 'mL', col: '#5AB0FF' }];
+  // Servo-u labels: "Paw cmH2O", "Flow l/min", "V ml", written inside the top-left of each waveform
+  const ch = [{ k: 'p', lab: 'Paw', u: 'cmH₂O', col: '#F2B33D' }, { k: 'f', lab: 'Flow', u: 'l/min', col: '#5BC85A' }, { k: 'v', lab: 'V', u: 'ml', col: '#3EBFCF' }];
   if (showE) ch.push({ k: 'e', lab: 'Edi', u: 'µV', col: '#FF7AC0' });
-  const gut = 52 * d, rm = 8 * d, top = 6 * d, bot = 18 * d;
+  const gut = 34 * d, rm = 8 * d, top = 6 * d, bot = 18 * d;
   const plotW = w - gut - rm, chH = (h - top - bot) / ch.length;
   const win = App.timeScale;
   let tEnd = App.frozen ? App.freezeT - App.review : e.t; const t0 = tEnd - win;
@@ -1666,15 +1691,15 @@ function drawWaves() {
     const [mn, mx] = scales[c2.k];
     const yOf = (v) => y1 - (v - mn) / (mx - mn) * (y1 - y0 - 4 * d);
     // frame
-    x.strokeStyle = '#173044'; x.lineWidth = 1 * d; x.beginPath(); x.moveTo(gut, y1); x.lineTo(gut + plotW, y1); x.stroke();
-    const ym = (y0 + y1) / 2;
-    x.fillStyle = c2.col; x.textAlign = 'left'; x.fillText(c2.lab, 5 * d, ym - 2 * d);
-    x.fillStyle = '#7D93A3'; x.fillText(c2.u, 5 * d, ym + 11 * d);
+    x.strokeStyle = '#3A3F43'; x.lineWidth = 1 * d; x.beginPath(); x.moveTo(gut, y1); x.lineTo(gut + plotW, y1); x.stroke();
+    x.strokeStyle = '#3A3F43'; x.beginPath(); x.moveTo(gut, y0); x.lineTo(gut, y1); x.stroke();
+    x.fillStyle = '#ECEFF1'; x.textAlign = 'left'; x.fillText(c2.lab + ' ' + c2.u, gut + 6 * d, y0 + 11 * d);
+    x.fillStyle = '#9AA3A9';
     x.textAlign = 'right'; x.fillText(fmt(mx, Math.abs(mx) < 10 && mx % 1 ? 1 : 0), gut - 5 * d, yOf(mx) + 9 * d); x.fillText(fmt(mn, Math.abs(mn) < 10 && mn % 1 ? 1 : 0), gut - 5 * d, y1 - 2 * d); x.textAlign = 'left';
-    if (mn < 0) { x.strokeStyle = '#1E3A4F'; x.setLineDash([3 * d, 4 * d]); x.beginPath(); x.moveTo(gut, yOf(0)); x.lineTo(gut + plotW, yOf(0)); x.stroke(); x.setLineDash([]); }
+    if (mn < 0) { x.strokeStyle = '#3A3F43'; x.setLineDash([3 * d, 4 * d]); x.beginPath(); x.moveTo(gut, yOf(0)); x.lineTo(gut + plotW, yOf(0)); x.stroke(); x.setLineDash([]); }
     if (c2.k === 'p') {
       const peep = e.phys.bagging ? 0 : e.set.peep;
-      x.strokeStyle = 'rgba(244,208,63,.35)'; x.setLineDash([4 * d, 5 * d]); x.beginPath(); x.moveTo(gut, yOf(peep)); x.lineTo(gut + plotW, yOf(peep)); x.stroke();
+      x.strokeStyle = 'rgba(242,179,61,.35)'; x.setLineDash([4 * d, 5 * d]); x.beginPath(); x.moveTo(gut, yOf(peep)); x.lineTo(gut + plotW, yOf(peep)); x.stroke();
       if (e.lim.pHigh < mx) { x.strokeStyle = 'rgba(226,52,43,.6)'; x.beginPath(); x.moveTo(gut, yOf(e.lim.pHigh)); x.lineTo(gut + plotW, yOf(e.lim.pHigh)); x.stroke(); }
       x.setLineDash([]);
       // breath-type strip
@@ -1686,7 +1711,6 @@ function drawWaves() {
       for (const a of e.annots) {
         if (a.t < t0 + (sweep ? gap : 0) || a.t > tEnd) continue;
         const xx = xOf(a.t);
-        if (a.kind === 'trig') { x.fillStyle = '#E7EEF2'; x.beginPath(); x.moveTo(xx, y0 + 4 * d); x.lineTo(xx - 4 * d, y0 + 11 * d); x.lineTo(xx + 4 * d, y0 + 11 * d); x.fill(); }
         if (App.overlays.annotate && a.kind === 'missed') { x.fillStyle = '#FFB86B'; x.fillText('missed effort', xx + 2 * d, y1 - 4 * d); x.fillRect(xx, y1 - 12 * d, 1.5 * d, 12 * d); }
         if (App.overlays.annotate && a.kind === 'double') { x.fillStyle = '#FFB86B'; x.fillText('double trigger', xx + 2 * d, y0 + 24 * d); }
       }
@@ -1700,13 +1724,13 @@ function drawWaves() {
     if (App.overlays.annotate && c2.k === 'v') annotateVol(x, xOf, yOf, y0, t0, tEnd, d);
   });
   // sweep cursor
-  if (sweep) { const xx = xOf(e.t); x.fillStyle = 'rgba(159,211,245,.18)'; x.fillRect(xx + 1 * d, top, (gap / win) * plotW, h - top - bot); }
+  if (sweep) { const xx = xOf(e.t); x.fillStyle = 'rgba(200,210,215,.10)'; x.fillRect(xx + 1 * d, top, (gap / win) * plotW, h - top - bot); }
   // time axis
-  x.fillStyle = '#5D7585'; x.font = `${10.5 * d}px 'Barlow Semi Condensed', sans-serif`;
+  x.fillStyle = '#7E878D'; x.font = `${10.5 * d}px 'Barlow Semi Condensed', sans-serif`;
   x.fillText(App.frozen ? 'FROZEN — review ' + (App.review > 0 ? '−' + App.review.toFixed(1) + ' s' : 'latest') : win + ' s sweep', gut, h - 4 * d);
-  const legend = [['Mandatory', 1], ['Supported', 2], ['NAVA', 3], ['Backup', 4]];
-  let lx = w - rm - 300 * d;
-  for (const [n, k] of legend) { x.fillStyle = KIND_COLOR[k]; x.fillRect(lx, h - 11 * d, 10 * d, 4 * d); x.fillStyle = '#7D93A3'; x.fillText(n, lx + 13 * d, h - 5 * d); lx += 74 * d; }
+  const legend = [['Mandatory', 1], ['Supported', 2], ['NAVA', 3], ['Backup', 4], ['Patient trigger', 7]];
+  let lx = Math.max(gut + 70 * d, w - rm - 380 * d);
+  for (const [n, k] of legend) { x.fillStyle = k === 7 ? '#FFFFFF' : KIND_COLOR[k]; x.fillRect(lx, h - 11 * d, 10 * d, k === 7 ? 2 * d : 4 * d); x.fillStyle = '#9AA3A9'; x.fillText(n, lx + 13 * d, h - 5 * d); lx += 74 * d; }
 }
 function visibleBreaths(t0, t1) {
   const e = App.eng, out = [];
@@ -1720,16 +1744,16 @@ function breathLabels(x, key, xOf, yOf, y0, t0, t1, d) {
   for (const b of visibleBreaths(t0, t1)) {
     const xx = xOf(b.start + b.tiAct * 0.5); if (xx < 56 * d) continue;
     const val = key === 'p' ? b.Pmax : b.VTi, y = yOf(key === 'p' ? b.Pmax : Math.max(0, b.Vmax - b.Vstart, b.VTi));
-    x.fillStyle = key === 'p' ? '#F4D03F' : '#5AB0FF';
+    x.fillStyle = key === 'p' ? '#F2B33D' : '#3EBFCF';
     x.fillText(fmt(val, key === 'v' && val < 30 ? 1 : 0), xx, Math.max(y0 + 11 * d, y - 4 * d));
   }
   x.textAlign = 'left';
 }
 function triggerSegments(x, xOf, yOf, t0, t1, d) {
-  // Servo-style: the inspiratory flow of a patient-triggered breath is drawn pink from the trigger to peak flow
+  // Servo-u (hands-on guide 4.1): with flow triggering, the triggering part of the flow waveform is drawn white
   const e = App.eng, list = e.breaths.slice(-40);
   if (e.cur && list[list.length - 1] !== e.cur) list.push(e.cur);
-  x.strokeStyle = '#FF4FB8'; x.lineWidth = 2.2 * d;
+  x.strokeStyle = '#FFFFFF'; x.lineWidth = 2.2 * d;
   for (const b of list) {
     if (!b.triggered || b.kind === 'bag' || !b.peakQt) continue;
     const ta = Math.max(t0, b.start - 0.04), tb = Math.min(t1, b.peakQt);
@@ -1777,51 +1801,66 @@ function drawLoops(x, w, h, d) {
   const all = pts.concat(ref || []);
   const pmax = Math.max(10, ...all.map(p => p[0])) * 1.1, vmax = Math.max(5, ...all.map(p => p[1])) * 1.1, fmax = Math.max(2, ...all.map(p => Math.abs(p[2]))) * 1.1;
   x.font = `${11 * d}px 'Barlow Semi Condensed', sans-serif`;
-  const box = (ox, title, xl, yl) => { x.strokeStyle = '#173044'; x.lineWidth = 1 * d; x.strokeRect(ox + pad, pad * 0.6, half - pad * 1.5, h - pad * 1.6); x.fillStyle = '#E7EEF2'; x.fillText(title, ox + pad, pad * 0.45); x.fillStyle = '#7D93A3'; x.fillText(xl, ox + half - pad * 2.2, h - pad * 0.5); x.fillText(yl, ox + 4 * d, pad * 0.9); };
+  const box = (ox, title, xl, yl) => { x.strokeStyle = '#3A3F43'; x.lineWidth = 1 * d; x.strokeRect(ox + pad, pad * 0.6, half - pad * 1.5, h - pad * 1.6); x.fillStyle = '#E7EEF2'; x.fillText(title, ox + pad, pad * 0.45); x.fillStyle = '#7D93A3'; x.fillText(xl, ox + half - pad * 2.2, h - pad * 0.5); x.fillText(yl, ox + 4 * d, pad * 0.9); };
   box(0, 'Pressure–volume loop', 'Paw cmH₂O', 'mL'); box(half, 'Flow–volume loop', 'Volume mL', 'L/min');
   const PV = (ox, p) => [ox + pad + p[0] / pmax * (half - pad * 1.5), h - pad - p[1] / vmax * (h - pad * 1.6)];
   const FV = (ox, p) => [ox + pad + p[1] / vmax * (half - pad * 1.5), (pad * 0.6 + (h - pad * 1.6) / 2) - p[2] / fmax * (h - pad * 1.6) / 2];
   const draw = (arr, col, fn, ox) => { if (!arr || arr.length < 2) return; x.strokeStyle = col; x.lineWidth = 2 * d; x.beginPath(); arr.forEach((p, j) => { const [a, b] = fn(ox, p); j ? x.lineTo(a, b) : x.moveTo(a, b); }); x.stroke(); };
   draw(ref, 'rgba(180,195,205,.55)', PV, 0); draw(ref, 'rgba(180,195,205,.55)', FV, half);
-  draw(pts, '#F4D03F', PV, 0); draw(pts, '#4BD48A', FV, half);
-  x.strokeStyle = '#1E3A4F'; x.beginPath(); const zy = pad * 0.6 + (h - pad * 1.6) / 2; x.moveTo(half + pad, zy); x.lineTo(w - pad / 2, zy); x.stroke();
+  draw(pts, '#F2B33D', PV, 0); draw(pts, '#5BC85A', FV, half);
+  x.strokeStyle = '#3A3F43'; x.beginPath(); const zy = pad * 0.6 + (h - pad * 1.6) / 2; x.moveTo(half + pad, zy); x.lineTo(w - pad / 2, zy); x.stroke();
   x.fillStyle = '#7D93A3'; x.fillText(ref ? 'Grey: saved reference loop' : 'Tip: save a reference loop from the Loops menu to compare after a change', pad, h - 6 * d);
 }
 
 /* ---------- numerics ---------- */
-function nv(label, unit, val, cls, extra) { return `<div class="nv ${cls || ''}"><div class="h"><span>${label}</span><span>${unit}</span></div><div class="v">${val}</div>${extra || ''}</div>`; }
+// Servo-u numerical value tile: name top-left, unit under it, alarm limits in small digits on the right (upper over lower)
+function nv(label, unit, val, cls, lim) {
+  const L = lim ? `<div class="lim"><span>${lim[0] == null ? '' : lim[0]}</span><span>${lim[1] == null ? '' : lim[1]}</span></div>` : '';
+  return `<div class="nv ${cls || ''}"><div class="h"><span>${label}</span></div><div class="u">${unit}</div><div class="v">${val}</div>${L}</div>`;
+}
 function renderNums() {
   const e = App.eng; if (!e.phys) return;
-  const m = e.measured(), hr = e.holdResult, el = $('#vNums');
+  const m = e.measured(), hr = e.holdResult, el = $('#vNums'), L = e.lim, A = App.alarmsActive || {};
   const disc = e.phys.bagging;
   const D = (v, dd) => disc ? '—' : fmt(v, dd);
-  let s = '';
-  s += nv('Ppeak', 'cmH₂O', D(m.Ppeak, 0), 'cP big');
-  s += nv('Pmean', 'cmH₂O', D(m.Pmean, 0), 'cP big');
-  s += nv('PEEP', 'cmH₂O', D(m.PEEP, 0), 'cP');
-  s += nv('RR', 'b/min', D(m.RR, 0), 'cF big');
-  s += nv('VTi', 'mL', D(m.VTi, m.VTi < 30 ? 1 : 0), 'cV');
-  s += nv('VTe', 'mL', D(m.VTe, m.VTe < 30 ? 1 : 0), 'cV big');
-  s += nv('VTe/kg', 'mL/kg', D(m.VTkg, 1), 'cV');
-  s += nv('MVe', 'L/min', D(m.MVe, 2), 'cV');
-  s += nv('MVe spont', 'L/min', D(m.MVsp, 2), 'cV');
-  s += nv('Cdyn', 'mL/cmH₂O', m.Cdyn == null || disc ? '—' : fmt(m.Cdyn, m.Cdyn < 10 ? 1 : 0), 'cW');
-  s += nv('Leak', '%', D(m.leak, 0), m.leak > 15 ? 'cE' : 'cW');
-  s += nv('I:E', '', m.ie ? '1:' + fmt(m.ie, 1) : '—', 'cW');
-  s += nv('Ti', 's', D(m.ti, 2), 'cW');
-  if (m.regP != null) s += nv(e.mode === 'auto_prvc_vs' && e.autoSub === 'supp' ? 'VS P' : 'PRVC P', 'cmH₂O ↑PEEP', D(m.regP, 0), 'cP');
-  if (e.phys.ediCatheter) { s += nv('Edi peak', 'µV', D(m.ediPk, 1), 'cE'); s += nv('Edi min', 'µV', D(m.ediMin, 1), 'cE'); }
+  const lv = (v) => v == null ? null : fmt(v, v < 10 && v % 1 ? (v < 1 ? 2 : 1) : 0);
+  const al = (...k) => k.some(x => A[x]) ? ' alarm' : '';
+  const supported = e.mode === 'ps_cpap' || e.mode === 'nava' || (e.mode.startsWith('auto') && e.autoSub === 'supp');
+  const o2 = disc ? 100 : e.o2Boost() ? 100 : e.set.fio2;
+  // ADVANCED view, as on the Servo-u: large column (Ppeak, RR, MVe, VT/PBW) and small column (Pmean, PEEP, I:E or Ti/Ttot, O2 conc., VTi, VTe, Cdyn)
+  let a = '', b = '';
+  a += nv('Ppeak', 'cmH₂O', D(m.Ppeak, 0), 'cP' + al('pHigh'), [lv(L.pHigh), null]);
+  a += nv('RR', 'b/min', D(m.RR, 0), 'cF' + al('rrHigh', 'rrLow'), [lv(L.rrHigh), lv(L.rrLow)]);
+  a += nv('MVe', 'l/min', D(m.MVe, m.MVe < 10 ? 2 : 1), 'cV' + al('mvHigh', 'mvLow'), [lv(L.mvHigh), lv(L.mvLow)]);
+  a += nv('VT/PBW', 'ml/kg', D(m.VTkg, 1), 'cW');
+  b += nv('Pmean', 'cmH₂O', D(m.Pmean, 0), 'cP');
+  b += nv('PEEP', 'cmH₂O', D(m.PEEP, 1), 'cP' + al('peepLow'), [null, lv(L.peepLow)]);
+  // controlled/SIMV: I:E from the set rate and Ti (as the Servo-u shows it, e.g. RR 18, Ti 0.9 s → 1:2.7); supported: measured Ti/Ttot
+  const ieSet = (60 / e.set.rate - e.set.ti) / e.set.ti;
+  b += supported ? nv('Ti/Ttot', '', m.tiTtot == null || disc ? '—' : fmt(m.tiTtot, 2), 'cF') : nv('I:E', '', disc ? '—' : ieSet >= 1 ? '1:' + fmt(ieSet, 1) : fmt(1 / Math.max(ieSet, 0.05), 1) + ':1', 'cF');
+  b += nv('O₂ conc.', '%', fmt(o2, 0), 'cF');
+  b += nv('VTi', 'ml', D(m.VTi, m.VTi < 30 ? 1 : 0), 'cV');
+  b += nv('VTe', 'ml', D(m.VTe, m.VTe < 30 ? 1 : 0), 'cV' + al('vteHigh', 'vteLow'), [lv(L.vteHigh), lv(L.vteLow)]);
+  b += nv('Cdyn', 'ml/cmH₂O', m.Cdyn == null || disc ? '—' : fmt(m.Cdyn, m.Cdyn < 10 ? 1 : 0), 'cW');
+  // additional values (reached with the arrow at the screen edge on the Servo-u)
+  let c = '';
+  c += nv('Leakage', '%', D(m.leak, 0), (m.leak > 15 ? 'cE' : 'cW') + al('leak'), [lv(L.leakHigh), null]);
+  c += nv('MVe sp', 'l/min', D(m.MVsp, 2), 'cV');
+  c += nv('RR sp', 'b/min', D(m.RRsp, 0), 'cF');
+  c += nv('Ti', 's', D(m.ti, 2), 'cF');
+  if (m.regP != null) c += nv(e.mode === 'auto_prvc_vs' && e.autoSub === 'supp' ? 'VS pressure' : 'PRVC pressure', 'cmH₂O above PEEP', D(m.regP, 0), 'cP');
+  if (e.phys.ediCatheter) { c += nv('Edi peak', 'µV', D(m.ediPk, 1), 'cE'); c += nv('Edi min', 'µV', D(m.ediMin, 1), 'cE'); }
   const recent = hr && e.t - hr.t < 120;
   if (recent && hr.type === 'insp') {
-    s += nv('Pplat', 'cmH₂O', fmt(hr.Pplat, 0), 'cP' + (hr.valid ? '' : ' dim'));
-    s += nv('Cstat', 'mL/cmH₂O', fmt(hr.Cstat, 1), 'cW' + (hr.valid ? '' : ' dim'));
-    s += nv('Driving P', 'cmH₂O', fmt(hr.dP, 0), 'cP' + (hr.valid ? '' : ' dim'));
-    s += nv('Ri', 'cmH₂O/L/s', hr.R == null ? '—' : fmt(hr.R, 0), 'cW' + (hr.valid ? '' : ' dim'));
+    c += nv('Pplat', 'cmH₂O', fmt(hr.Pplat, 0), 'cP' + (hr.valid ? '' : ' dim'));
+    c += nv('Cstatic', 'ml/cmH₂O', fmt(hr.Cstat, 1), 'cW' + (hr.valid ? '' : ' dim'));
+    c += nv('Pdrive', 'cmH₂O', fmt(hr.dP, 0), 'cP' + (hr.valid ? '' : ' dim'));
+    c += nv('Ri', 'cmH₂O/l/s', hr.R == null ? '—' : fmt(hr.R, 0), 'cW' + (hr.valid ? '' : ' dim'));
   } else if (recent && hr.type === 'exp') {
-    s += nv('PEEP tot', 'cmH₂O', fmt(hr.peepTot, 1), 'cP' + (hr.valid ? '' : ' dim'));
-    s += nv('Auto-PEEP', 'cmH₂O', fmt(hr.autoPEEP, 1), 'cP' + (hr.valid ? '' : ' dim'));
-  } else s += nv('Pplat', 'cmH₂O', '—', 'cP dim') + nv('Cstat', 'mL/cmH₂O', '—', 'cW dim');
-  el.innerHTML = s;
+    c += nv('PEEPtot', 'cmH₂O', fmt(hr.peepTot, 1), 'cP' + (hr.valid ? '' : ' dim'));
+    c += nv('Auto-PEEP', 'cmH₂O', fmt(hr.autoPEEP, 1), 'cP' + (hr.valid ? '' : ' dim'));
+  } else c += nv('Pplat', 'cmH₂O', '—', 'cP dim') + nv('Cstatic', 'ml/cmH₂O', '—', 'cW dim');
+  el.innerHTML = `<div class="vgrid"><div class="vcol a">${a}</div><div class="vcol b">${b}</div></div><div class="vmore">Additional values</div><div class="vgrid more">${c}</div>`;
   $('#vStandby').hidden = !e.phys.bagging;
 }
 function modeSub() {
@@ -1837,11 +1876,16 @@ function modeSub() {
 }
 function renderStatusBar() {
   const e = App.eng; if (!e.phys) return;
-  $('#vModeName').textContent = MODES[e.mode].name;
+  // mode heading as on the Servo-u: supported modes show their backup ("PS/CPAP ⇄ PC"), grey until backup is active
+  const bk = e.mode === 'ps_cpap' || e.mode === 'nava';
+  $('#vModeName').innerHTML = esc(MODES[e.mode].name) + (bk ? ` <span class="bk${e.backup ? ' on' : ''}">⇄ PC</span>` : '');
   $('#vModeSub').textContent = modeSub();
   $('#vPatWt').textContent = fmt(e.phys.wt, e.phys.wt < 10 ? 1 : 0) + ' kg';
   $('#vPatAge').textContent = e.phys.age;
   $('#vCatTop').textContent = e.phys.wt < 5 ? 'Neonatal' : 'Pediatric';
+  // backup settings in the direct access bar are grey unless backup ventilation is running
+  $$('#vBar .vtile[data-k]').forEach(t => t.classList.toggle('inactive', /^b(pc|rate|ti|ps)$/.test(t.dataset.k) && !(e.backup || (t.dataset.k === 'bps' && e.ediLost))));
+  const bt = $('#tileBoost'); if (bt) { const on = e.o2Boost(); bt.setAttribute('aria-pressed', on ? 'true' : 'false'); $('.h', bt).textContent = on ? 'O₂ boost ' + Math.ceil(e.boostEnd - e.physT) + ' s' : 'O₂ boost'; }
   $('#vClock').textContent = mmss(App.caseT());
   $('#caseTimer').textContent = mmss(App.caseT());
   const mt = $('#vMuteTx'), muted = App.mutedUntil > performance.now();
@@ -1850,9 +1894,14 @@ function renderStatusBar() {
 }
 function renderBar() {
   const e = App.eng, keys = MODES[e.mode].bar, b = $('#vBar');
-  b.innerHTML = keys.map(k => { const P = PARAMS[k]; return `<button class="vtile" data-k="${k}"><span class="h"><span>${esc(P.short)}</span><span>${esc(P.unit)}</span></span><span class="v">${fmt(e.set[k], P.dec)}</span></button>`; }).join('') + `<button class="vtile more" id="tileMore">Mode<br>settings</button>`;
+  // direct access bar as on the Servo-u: O2 boost at the left, then O2 conc., PEEP and the mode's main settings, then the arrow to all settings
+  b.innerHTML = `<button class="vtile boost" id="tileBoost" title="100% oxygen for 1 minute" aria-pressed="false"><span class="v">100</span><span class="h">O₂ boost</span></button>` +
+    keys.map(k => { const P = PARAMS[k]; return `<button class="vtile" data-k="${k}"><span class="h"><span>${esc(P.short)}</span><span>${esc(P.unit)}</span></span><span class="v">${fmt(e.set[k], P.dec)}</span></button>`; }).join('') +
+    `<button class="vtile more" id="tileMore" title="All mode settings" aria-label="All mode settings">‹</button>`;
   $$('.vtile[data-k]', b).forEach(t => t.onclick = () => openDial(t.dataset.k));
   $('#tileMore').onclick = () => openModeSheet(e.mode);
+  $('#tileBoost').onclick = () => { if (e.phys.bagging) return; e.boostEnd = e.physT + 60; logAction('o2boost', 'O₂ boost (100% for 1 minute)'); App.addFeed('O₂ boost: 100% oxygen for 1 minute', 'set'); renderStatusBar(); renderNums(); };
+  renderStatusBar();
 }
 
 /* ---------- side menu ---------- */
@@ -1867,7 +1916,8 @@ const ICON = {
   setup: '<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="3" fill="currentColor"/><path d="M10 1v4M10 15v4M1 10h4M15 10h4M3.6 3.6l2.8 2.8M13.6 13.6l2.8 2.8M3.6 16.4l2.8-2.8M13.6 6.4l2.8-2.8" stroke="currentColor" stroke-width="1.6"/></svg>'
 };
 function renderSide() {
-  const items = [['modes', 'Modes'], ['alarms', 'Alarm limits'], ['trends', 'Trends'], ['hold', 'Maneuvers'], ['loops', 'Loops'], ['freeze', 'Freeze'], ['edi', 'Edi'], ['setup', 'Setup']];
+  // quick menu labels follow the Servo-u (Modes, Alarm limits, Trends & logs, Maneuvers, Views); Freeze, Edi and Setup are simulator extras
+  const items = [['modes', 'Modes'], ['alarms', 'Alarm limits'], ['trends', 'Trends & logs'], ['hold', 'Maneuvers'], ['loops', 'Views'], ['edi', 'Edi catheter'], ['freeze', 'Freeze'], ['setup', 'Setup']];
   $('#vSide').innerHTML = items.map(([k, n]) => `<button data-s="${k}" aria-pressed="${(k === 'loops' && App.view === 'loops') || (k === 'freeze' && App.frozen) ? 'true' : 'false'}">${ICON[k]}<span>${n}</span></button>`).join('');
   $$('#vSide button').forEach(b => b.onclick = () => sideAction(b.dataset.s));
 }
@@ -2036,7 +2086,7 @@ function openEdi() {
   const e = App.eng;
   const body = `<p>Position the Edi feeding catheter so the middle leads (2 and 3) show the strongest diaphragm activity. P waves are largest in the top lead and fade toward the bottom when the catheter sits correctly; blue highlighting marks the leads straddling the diaphragm. Depth is shown relative to the calculated insertion distance from the manufacturer's formula.</p>
   <label class="tog"><input type="checkbox" id="ediIn" ${e.phys.ediCatheter ? 'checked' : ''}> Edi catheter connected</label>
-  <canvas id="ediCv" style="width:100%;height:220px;background:#07131D;border-radius:8px;display:block"></canvas>
+  <canvas id="ediCv" style="width:100%;height:220px;background:#1E2124;border-radius:8px;display:block"></canvas>
   <div class="prow" style="grid-template-columns:auto 1fr auto;border:0"><span>Depth</span><input type="range" id="ediPos" min="-6" max="6" step="0.5" value="${e.phys.ediPos}" style="accent-color:#9FD3F5"><span id="ediPosTx"></span></div>
   <div>Signal quality <b id="ediQ"></b></div>`;
   let raf = null;
@@ -2045,7 +2095,7 @@ function openEdi() {
   m.querySelector('#ediIn').onchange = (ev) => { e.phys.ediCatheter = ev.target.checked; logAction('edicath', 'Edi catheter ' + (ev.target.checked ? 'connected' : 'disconnected')); };
   pos.oninput = () => { e.phys.ediPos = +pos.value; };
   const draw = () => {
-    const { w, h, d } = fitCanvas(cvs); const x = cvs.getContext('2d'); x.fillStyle = '#07131D'; x.fillRect(0, 0, w, h);
+    const { w, h, d } = fitCanvas(cvs); const x = cvs.getContext('2d'); x.fillStyle = '#1E2124'; x.fillRect(0, 0, w, h);
     const off = e.phys.ediPos, q = e.ediQuality();
     m.querySelector('#ediPosTx').textContent = (off > 0 ? '+' : '') + off.toFixed(1) + ' cm ' + (Math.abs(off) < 1 ? '(on target)' : off > 0 ? '(too deep)' : '(too shallow)');
     m.querySelector('#ediQ').textContent = Math.round(q * 100) + '%' + (q < 0.35 ? ' — no usable Edi' : '');
@@ -2077,8 +2127,8 @@ function openEdi() {
 /* ---------- trends ---------- */
 function openTrends() {
   const e = App.eng, tr = e.trends;
-  const series = [['Ppeak', 'cmH₂O', '#F4D03F'], ['VTkg', 'mL/kg', '#5AB0FF'], ['MVe', 'L/min', '#5AB0FF'], ['Cdyn', 'mL/cmH₂O', '#E7EEF2'], ['SpO2', '%', '#36E0E0'], ['EtCO2', 'mmHg', '#F2F2A0'], ['PaCO2', 'mmHg', '#F2B66D'], ['HR', '/min', '#33E06A'], ['MAP', 'mmHg', '#FF6B6B'], ['CVP', 'mmHg', '#6CB8FF']];
-  const body = `<p class="muted">Trends are sampled every 2 s of breath time; the x-axis is physiologic time since the case started (${tr.length ? mmss(tr[tr.length - 1].t) : '00:00'}). PaCO2 is the model's arterial value, shown here for teaching — the bedside value comes from an ABG.</p><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px">${series.map((s, i) => `<div><div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:${s[2]}">${s[0]}</span><span class="muted">${s[1]}</span></div><canvas data-i="${i}" style="width:100%;height:90px;background:#07131D;border-radius:6px;display:block"></canvas></div>`).join('')}</div>`;
+  const series = [['Ppeak', 'cmH₂O', '#F2B33D'], ['VTkg', 'mL/kg', '#3EBFCF'], ['MVe', 'L/min', '#3EBFCF'], ['Cdyn', 'mL/cmH₂O', '#E7EEF2'], ['SpO2', '%', '#36E0E0'], ['EtCO2', 'mmHg', '#F2F2A0'], ['PaCO2', 'mmHg', '#F2B66D'], ['HR', '/min', '#33E06A'], ['MAP', 'mmHg', '#FF6B6B'], ['CVP', 'mmHg', '#6CB8FF']];
+  const body = `<p class="muted">Trends are sampled every 2 s of breath time; the x-axis is physiologic time since the case started (${tr.length ? mmss(tr[tr.length - 1].t) : '00:00'}). PaCO2 is the model's arterial value, shown here for teaching — the bedside value comes from an ABG.</p><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px">${series.map((s, i) => `<div><div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:${s[2]}">${s[0]}</span><span class="muted">${s[1]}</span></div><canvas data-i="${i}" style="width:100%;height:90px;background:#1E2124;border-radius:6px;display:block"></canvas></div>`).join('')}</div>`;
   const m = modal('Trends', body, [], { dark: true, wide: true });
   requestAnimationFrame(() => $$('canvas[data-i]', m).forEach(c => {
     const s = series[+c.dataset.i], { w, h, d } = fitCanvas(c), x = c.getContext('2d');
