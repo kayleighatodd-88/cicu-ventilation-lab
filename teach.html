@@ -113,9 +113,6 @@ body.vent-full .vscreen{ height:calc(100vh - 170px); }
 .nv.big .v{ font-size:30px; }
 .nv.wide{ grid-column:span 2; }
 .nv.cP .v{ color:var(--sP); } .nv.cF .v{ color:var(--sF); } .nv.cV .v{ color:var(--sV); } .nv.cE .v{ color:var(--sE); } .nv.cW .v{ color:#E7EEF2; }
-.nv.cS .v{ color:#4BD48A; } .nv.cM .v{ color:#A9C4DA; }
-.nv.wide .h span:first-child{ white-space:pre; }
-.nv .v small{ font-size:.6em; color:var(--sDim); }
 .nv.dim .v{ color:#56707F; }
 .vbar{ display:flex; gap:5px; padding:6px; background:#0A1A27; border-top:1px solid var(--sLine); overflow-x:auto; }
 .vtile{ flex:1 0 98px; background:var(--tile); border:1px solid #23506F; color:var(--sTxt); border-radius:7px; padding:5px 8px 6px; text-align:left; display:flex; flex-direction:column; min-width:96px; }
@@ -376,7 +373,7 @@ function bsaFromWt(w) { return (4 * w + 7) / (w + 90); }
 const MODEL_NOTES = [
   'Respiratory system: single-compartment lung (one compliance, one resistance) with mild overdistension stiffening above ~25 cmH2O elastic pressure. Endotracheal tube resistance scales roughly with 1/diameter^4.75 and is flow-independent.',
   'Patient effort: a sinusoidal inspiratory muscle pressure (Pmus) generator. Drive scales with sedation, PaCO2 (chemoreflex) and hypoxemia. Edi is modelled as Pmus divided by a fixed neuro-ventilatory efficiency (≈0.9 cmH2O/µV) plus tonic activity.',
-  'Ventilator: ideal pressure source with set rise time. Flow trigger compares patient flow (leak compensation on) or net measured flow (leak compensation off) to the trigger setting. PS/VS breaths cycle at the End-insp. % of peak flow; NAVA cycles at 70% of peak Edi.',
+  'Ventilator: pressure source with set rise time that sags with patient effort (up to 2.5 cmH2O; largest at low support and while effort is rising), so spontaneous breaths dip Paw on CPAP and scallop it on PS/PC breaths. Flow trigger compares patient flow (leak compensation on) or net measured flow (leak compensation off) to the trigger setting. PS/VS breaths cycle at the End-insp. % of peak flow; NAVA cycles at 70% of peak Edi.',
   'PRVC and VS adjust pressure breath-by-breath toward the target using expiratory VT, in steps of no more than 3 cmH2O, and never above the upper pressure limit minus 5 cmH2O. The exact Getinge regulation algorithm is proprietary and is not reproduced.',
   'SIMV: a mandatory breath is due every 60/rate seconds; a patient trigger in the last 30% of the SIMV period delivers a synchronized mandatory breath, earlier triggers receive PS.',
   'Automode: switches from controlled to supported after two consecutive patient-triggered breaths and back to controlled when no trigger occurs within the trigger timeout. The real Servo-u timeout adapts over successive breaths; here it is fixed at the set value.',
@@ -392,17 +389,17 @@ const MODEL_NOTES = [
 
 /* ---------- Patient presets ---------- */
 const PRESETS = {
-  neonate: { label: 'Neonate', wt: 3.2, age: '6 days', ett: 3.5, cuffed: false, C: 2.2, Raw: 22, rr: 45, tiN: 0.36, hr: 150, map: 52, pp: 22, vo2kg: 7.0, hb: 14, frcKg: 22, vdKg: 1.5, vdApp: 2.5,
-    vent: { vt: 18, rate: 30, ti: 0.40, rise: 0.05, ps: 8, pc: 12, peep: 5, fio2: 40, trig: 0.25, cycle: 30, apnea: 8, bpc: 12, brate: 30, bti: 0.4, nava: 1.0, editrig: 0.5, bps: 8 },
+  neonate: { label: 'Neonate', wt: 3.2, age: '6 days', ett: 3.5, cuffed: false, C: 1.5, Raw: 22, rr: 45, tiN: 0.36, hr: 150, map: 52, pp: 22, vo2kg: 7.0, hb: 14, frcKg: 22, vdKg: 1.5, vdApp: 2.5,
+    vent: { vt: 18, rate: 30, ti: 0.40, rise: 0.05, ps: 10, pc: 15, peep: 5, fio2: 40, trig: 0.25, cycle: 30, apnea: 8, bpc: 15, brate: 30, bti: 0.4, nava: 1.0, editrig: 0.5, bps: 10 },
     alarms: { pHigh: 30, peepLow: 3, mvLow: 0.35, mvHigh: 1.6, rrLow: 20, rrHigh: 80, vteLow: 11, vteHigh: 30, etLow: 25, etHigh: 60, leakHigh: 40 } },
-  infant: { label: 'Infant', wt: 8, age: '7 months', ett: 4.0, cuffed: false, C: 5.6, Raw: 14, rr: 32, tiN: 0.5, hr: 125, map: 62, pp: 30, vo2kg: 7.0, hb: 12, frcKg: 24, vdKg: 1.6, vdApp: 4,
-    vent: { vt: 56, rate: 22, ti: 0.60, rise: 0.07, ps: 8, pc: 12, peep: 5, fio2: 35, trig: 0.4, cycle: 30, apnea: 10, bpc: 12, brate: 22, bti: 0.6, nava: 1.0, editrig: 0.5, bps: 8 },
+  infant: { label: 'Infant', wt: 8, age: '7 months', ett: 4.0, cuffed: false, C: 3.7, Raw: 14, rr: 32, tiN: 0.5, hr: 125, map: 62, pp: 30, vo2kg: 7.0, hb: 12, frcKg: 24, vdKg: 1.6, vdApp: 4,
+    vent: { vt: 56, rate: 22, ti: 0.60, rise: 0.07, ps: 10, pc: 15, peep: 5, fio2: 35, trig: 0.4, cycle: 30, apnea: 10, bpc: 15, brate: 22, bti: 0.6, nava: 1.0, editrig: 0.5, bps: 10 },
     alarms: { pHigh: 35, peepLow: 3, mvLow: 0.8, mvHigh: 2.6, rrLow: 14, rrHigh: 60, vteLow: 35, vteHigh: 90, etLow: 25, etHigh: 60, leakHigh: 40 } },
-  child: { label: 'Young child', wt: 20, age: '6 years', ett: 5.5, cuffed: true, C: 15, Raw: 6, rr: 22, tiN: 0.8, hr: 100, map: 70, pp: 40, vo2kg: 5.5, hb: 12, frcKg: 28, vdKg: 1.6, vdApp: 8,
-    vent: { vt: 140, rate: 18, ti: 0.80, rise: 0.10, ps: 8, pc: 14, peep: 5, fio2: 35, trig: 0.8, cycle: 30, apnea: 15, bpc: 14, brate: 18, bti: 0.8, nava: 1.0, editrig: 0.5, bps: 8 },
+  child: { label: 'Young child', wt: 20, age: '6 years', ett: 5.5, cuffed: true, C: 10, Raw: 6, rr: 22, tiN: 0.8, hr: 100, map: 70, pp: 40, vo2kg: 5.5, hb: 12, frcKg: 28, vdKg: 1.6, vdApp: 8,
+    vent: { vt: 140, rate: 18, ti: 0.80, rise: 0.10, ps: 10, pc: 17, peep: 5, fio2: 35, trig: 0.8, cycle: 30, apnea: 15, bpc: 17, brate: 18, bti: 0.8, nava: 1.0, editrig: 0.5, bps: 10 },
     alarms: { pHigh: 35, peepLow: 3, mvLow: 1.5, mvHigh: 5, rrLow: 10, rrHigh: 45, vteLow: 90, vteHigh: 220, etLow: 25, etHigh: 60, leakHigh: 30 } },
-  adolescent: { label: 'Adolescent', wt: 50, age: '15 years', ett: 7.0, cuffed: true, C: 34, Raw: 4, rr: 16, tiN: 1.0, hr: 85, map: 80, pp: 45, vo2kg: 4.0, hb: 13, frcKg: 30, vdKg: 1.6, vdApp: 15,
-    vent: { vt: 350, rate: 14, ti: 1.0, rise: 0.15, ps: 8, pc: 14, peep: 5, fio2: 35, trig: 1.5, cycle: 30, apnea: 20, bpc: 14, brate: 14, bti: 1.0, nava: 1.0, editrig: 0.5, bps: 8 },
+  adolescent: { label: 'Adolescent', wt: 50, age: '15 years', ett: 7.0, cuffed: true, C: 23, Raw: 4, rr: 16, tiN: 1.0, hr: 85, map: 80, pp: 45, vo2kg: 4.0, hb: 13, frcKg: 30, vdKg: 1.6, vdApp: 15,
+    vent: { vt: 350, rate: 14, ti: 1.0, rise: 0.15, ps: 10, pc: 17, peep: 5, fio2: 35, trig: 1.5, cycle: 30, apnea: 20, bpc: 17, brate: 14, bti: 1.0, nava: 1.0, editrig: 0.5, bps: 10 },
     alarms: { pHigh: 40, peepLow: 3, mvLow: 3, mvHigh: 10, rrLow: 8, rrHigh: 35, vteLow: 230, vteHigh: 520, etLow: 25, etHigh: 60, leakHigh: 30 } }
 };
 
@@ -479,7 +476,7 @@ class Engine {
     this.h = { HR: P.hr, MAP: P.map, SBP: P.map + 2 / 3 * P.pp, DBP: P.map - P.pp / 3, CVP: this.base.CVP0, CO: this.base.CO0, PVRf: p.pvrBase, svrComp: 1 };
     this.updateMechanics();
     this.V = this.set.peep * this.Ceff;
-    this.Paw = this.set.peep; this.Q = 0; this.Qmeas = 0; this.Qleak = 0; this.Palv = this.set.peep; this.Pmus = 0;
+    this.Paw = this.set.peep; this.Q = 0; this.Qmeas = 0; this.Qleak = 0; this.Palv = this.set.peep; this.Pmus = 0; this.pmusLag = 0;
     this.Edi = 0; this.EdiMeas = 0; this.ediPrev = 0; this.ediMinRef = 1; this.ediExpMin = 99;
     this.phase = 'exp'; this.expStart = 0; this.cycleStart = -60 / this.set.rate * 0.5; this.lastAnyBreath = 0; this.lastCtrl = -99; this.lastBackup = -99;
     this.cur = null; this.breaths = []; this.prvcP = clamp(this.set.vt / Math.max(1, this.Ceff) , 5, 25); this.vsP = this.prvcP;
@@ -577,6 +574,13 @@ class Engine {
     else if (this.hold) Paw = null;
     else if (this.phase === 'exp') Paw = PEEP;
     else Paw = this.inspPressure();
+    // the ventilator is not an ideal pressure source: patient effort pulls airway pressure down,
+    // most when support is low (CPAP dip) and while effort is still rising (servo lag)
+    this.pmusLag += (this.Pmus - this.pmusLag) * Math.min(1, dt / 0.1);
+    if (!p.bagging && !this.hold && this.phase === 'insp' && this.Pmus > 0.05 && !p.disconnected) {
+      const lvl = Math.max(0, Paw - PEEP);
+      Paw -= clamp(0.18 * this.Pmus * 4 / (lvl + 4) + 0.3 * Math.max(0, this.Pmus - this.pmusLag), 0, 2.5);
+    }
 
     const Pel = this.pel(this.V);
     const Palv = Pel - this.Pmus;
@@ -1072,9 +1076,6 @@ class Engine {
     const span = Math.min(30, Math.max(this.t, 1));
     const lastB = br[br.length - 1];
     const lastM = [...br].reverse().find(b => b.mand);
-    // per-type values (last 3 of each type within 30 s) so spontaneous breaths are not averaged away
-    const byType = (sp) => { const xs = []; for (let i = br.length - 1; i >= 0 && xs.length < 3; i--) { const b = br[i]; if (b.end < t0) break; if (b.spont === sp) xs.push(b); } return xs.length ? { P: xs.reduce((a, b) => a + b.Pmax, 0) / xs.length, VT: xs.reduce((a, b) => a + b.VTe, 0) / xs.length } : null; };
-    const spB = byType(true), mdB = byType(false);
     const VTi = avg(b => b.VTi), VTe = avg(b => b.VTe), Ppk = avg(b => b.Pmax);
     const peepM = avg(b => b.peep);
     const leak = VTi > 1 ? clamp((VTi - VTe) / VTi * 100, 0, 100) : 0;
@@ -1087,7 +1088,6 @@ class Engine {
       MVe: discon ? 0 : vteSum * 60 / span / 1000, MVsp: vteSp * 60 / span / 1000,
       Cdyn: Ppk - peepM > 1 ? VTe / (Ppk - peepM) : null, leak, ti, te, ie: ti > 0 && te > 0 ? te / ti : null,
       ediPk: avg(b => b.ediPk), ediMin: avg(b => (b.ediMin < 50 ? b.ediMin : 0)), endExpFlow: lastB ? lastB.endExpQ * 60 / 1000 : 0, autoPEEP: lastB ? lastB.autoPEEP : 0,
-      spP: spB && !discon ? spB.P : null, spVT: spB && !discon ? spB.VT : null, mdP: mdB && !discon ? mdB.P : null, mdVT: mdB && !discon ? mdB.VT : null,
       regP: this.mode === 'simv_prvc' || (this.mode === 'auto_prvc_vs' && this.autoSub === 'ctrl') ? this.prvcP : this.mode === 'auto_prvc_vs' ? this.vsP : null
     };
   }
@@ -1186,9 +1186,9 @@ const H = {
 const LESSONS = [
   { id: 'L1', title: 'Mechanical ventilation fundamentals', steps: [
     { type: 'read', html: `<p><b>Oxygenation</b> and <b>ventilation</b> are separate problems with separate levers. Oxygenation depends mainly on FiO2 and mean airway pressure (PEEP, inspiratory pressure and time), which keep alveoli open for gas exchange. Ventilation — CO2 removal — depends on <b>alveolar minute ventilation</b>: (VT − dead space) × respiratory rate.</p><p>Minute ventilation (MV) = VT × RR. Because dead space is a fixed volume per breath, shrinking VT reduces alveolar ventilation more than the MV number suggests. Infants with apparatus dead space (flow sensor, Y-piece) are especially sensitive to this.</p><p>Inspiratory time (Ti) sets how long each breath lasts; with a set rate, it also sets the expiratory time left over.</p>` },
-    { type: 'demo', html: `<p>An 8 kg infant is on SIMV (PC) + PS. Watch the right-hand numeric column: Ppeak, PEEP, VTe and MVe. On the monitor, compare EtCO2 with the ABG PaCO2.</p><p>Try lowering the respiratory rate to 12, then obtain an ABG after about a minute (Physiology time 4× speeds this up). Then restore the rate.</p>`, setup: (a) => a.loadCase({ preset: 'infant', mode: 'simv_pc', phys: { sedation: 0.85 }, settings: { pc: 13, rate: 24 } }) },
+    { type: 'demo', html: `<p>An 8 kg infant is on SIMV (PC) + PS. Watch the right-hand numeric column: Ppeak, PEEP, VTe and MVe. On the monitor, compare EtCO2 with the ABG PaCO2.</p><p>Try lowering the respiratory rate to 12, then obtain an ABG after about a minute (Physiology time 4× speeds this up). Then restore the rate.</p>`, setup: (a) => a.loadCase({ preset: 'infant', mode: 'simv_pc', phys: { sedation: 0.85 }, settings: { pc: 17, rate: 24 } }) },
     { type: 'task', html: `<p><b>Exercise.</b> This infant is hypercapnic. Raise alveolar ventilation <i>without</i> touching FiO2: get minute ventilation (MVe) to at least 1.6 L/min while keeping VTe ≤ 9 mL/kg.</p>`,
-      setup: (a) => a.loadCase({ preset: 'infant', mode: 'simv_pc', phys: { sedation: 0.9, Cfactor: 0.9 }, settings: { pc: 11, rate: 16 } }),
+      setup: (a) => a.loadCase({ preset: 'infant', mode: 'simv_pc', phys: { sedation: 0.9, Cfactor: 0.9 }, settings: { pc: 15, rate: 16 } }),
       check: (a) => H.m(a).MVe >= 1.6 && H.vtkg(a) <= 9 && a.eng.set.fio2 === a.caseStart.settings.fio2,
       hint: 'Increase the SIMV rate or the PC above PEEP (or both). Leave O₂ alone — it does not change CO2 removal.', success: 'Minute ventilation is higher. PaCO2 will now fall over several minutes; EtCO2 responds first.' },
     { type: 'quiz', q: 'Which change most directly improves CO2 elimination?', o: ['Increase FiO2', 'Increase PEEP', 'Increase alveolar minute ventilation (rate or VT)', 'Increase rise time'], a: 2, e: 'CO2 removal follows alveolar ventilation. FiO2 and PEEP act on oxygenation (PEEP can improve or worsen ventilation depending on recruitment and overdistension).' },
@@ -1231,7 +1231,7 @@ const LESSONS = [
     { type: 'read', html: `<p><b>Compliance</b> (mL/cmH2O) is volume change per pressure change. <b>Static compliance</b> uses plateau pressure from an inspiratory hold (no flow): Cstat = VT ÷ (Pplat − PEEPtotal). <b>Dynamic compliance</b> uses peak pressure: Cdyn = VT ÷ (Ppeak − PEEP), so it falls with <i>either</i> stiffer lungs or higher resistance — and patient effort distorts it.</p><p><b>Resistance</b> ≈ (Ppeak − Pplat) ÷ end-inspiratory flow. <b>Driving pressure</b> = Pplat − PEEPtotal; valid only in a passive patient during a hold.</p><p>Use <i>Maneuvers</i> on the ventilator to perform holds. A large Ppeak–Pplat gap points to resistance (tube, secretions, bronchospasm); rising Pplat points to compliance (atelectasis, edema, pneumothorax, overdistension).</p>` },
     { type: 'demo', html: `<p>A sedated infant in SIMV (PC). Open Controls &gt; Patient and halve compliance. VT falls at the same pressure. Then switch the mode to SIMV (PRVC): pressure rises instead. Perform an inspiratory hold to read Pplat and Cstat.</p>`, setup: (a) => a.loadCase({ preset: 'infant', mode: 'simv_pc', phys: { sedation: 0.95 } }) },
     { type: 'task', html: `<p><b>Exercise.</b> Compliance has worsened from atelectasis. Using SIMV (PC), restore VTe to <b>≥ 6 mL/kg</b> while keeping <b>Ppeak ≤ 30 cmH2O</b>. Consider whether PEEP can recruit lung.</p>`,
-      setup: (a) => a.loadCase({ preset: 'infant', mode: 'simv_pc', phys: { sedation: 0.95, atel: 0.7 }, settings: { pc: 12, peep: 4 } }),
+      setup: (a) => a.loadCase({ preset: 'infant', mode: 'simv_pc', phys: { sedation: 0.95, atel: 0.7 }, settings: { pc: 16, peep: 4 } }),
       check: (a) => { const m = H.m(a); return a.eng.mode === 'simv_pc' && m.VTkg >= 6 && m.Ppeak <= 30; }, hint: 'Raise PEEP to 7–9 (wait ~30 s for recruitment), then adjust PC above PEEP.', success: 'Recruitment improved compliance, so less driving pressure is needed for the same VT.' },
     { type: 'quiz', q: 'Ppeak rose from 22 to 34 cmH2O; Pplat is unchanged at 18. Most likely cause:', o: ['Atelectasis', 'Pneumothorax', 'Increased airway resistance (secretions, kinked tube, bronchospasm)', 'Pulmonary edema'], a: 2, e: 'A widening Ppeak–Pplat gap reflects resistance. Compliance problems raise Pplat.' }
   ] },
@@ -1239,7 +1239,7 @@ const LESSONS = [
     { type: 'read', html: `<p><b>Pressure–time</b> (yellow): square-ish in PC/PRVC/PS; a dip before the breath marks a trigger. <b>Flow–time</b> (green): inspiration up, expiration down. Expiratory flow that has not returned to zero when the next breath starts = <b>incomplete exhalation / auto-PEEP</b>. Small flow deflections without a breath = <b>missed efforts</b>. <b>Volume–time</b> (blue): should return to baseline; a trace that never returns suggests a <b>leak</b> (VTi &gt; VTe).</p><p>Loops: the P–V loop flattens and bends toward the pressure axis with overdistension ("beaking"); the F–V loop's expiratory limb scoops with obstruction and does not reach zero with trapping. Two breaths stacked within one effort = <b>double triggering</b>.</p>` },
     { type: 'demo', html: `<p>Turn on <b>Annotate waveforms</b> in Controls &gt; Teaching overlays. Use Controls &gt; Complications to add a leak, then airway resistance. Freeze the display (ventilator menu) to review breaths.</p>`, setup: (a) => a.loadCase({ preset: 'infant', mode: 'simv_prvc', phys: { sedation: 0.3 } }) },
     { type: 'quiz', q: 'Look at the ventilator now (a problem has been added). The volume trace does not return to baseline and VTi exceeds VTe by ~30%. This is…', setup: (a) => a.loadCase({ preset: 'child', mode: 'simv_prvc', phys: { leak: 0.35, cuffed: false } }), o: ['Air trapping', 'Leak', 'Double triggering', 'Normal'], a: 1, e: 'Inspired volume escapes before it can be measured on expiration.' },
-    { type: 'quiz', q: 'Now: expiratory flow does not reach zero before the next mandatory breath. This indicates…', setup: (a) => a.loadCase({ preset: 'child', mode: 'simv_pc', phys: { Rfactor: 8, sedation: 0.95 }, settings: { rate: 32, ti: 1.0, pc: 16 } }), o: ['Leak', 'Incomplete exhalation with auto-PEEP', 'Low compliance', 'Over-sensitive trigger'], a: 1, e: 'Lengthen expiratory time (lower rate, shorter Ti) and treat resistance. An expiratory hold measures total PEEP.' },
+    { type: 'quiz', q: 'Now: expiratory flow does not reach zero before the next mandatory breath. This indicates…', setup: (a) => a.loadCase({ preset: 'child', mode: 'simv_pc', phys: { Rfactor: 8, sedation: 0.95 }, settings: { rate: 32, ti: 1.0, pc: 20 } }), o: ['Leak', 'Incomplete exhalation with auto-PEEP', 'Low compliance', 'Over-sensitive trigger'], a: 1, e: 'Lengthen expiratory time (lower rate, shorter Ti) and treat resistance. An expiratory hold measures total PEEP.' },
     { type: 'quiz', q: 'Now: the patient\'s effort (watch the flow trace in expiration) produces small inspiratory deflections that are not followed by a breath. Most likely?', setup: (a) => a.loadCase({ preset: 'infant', mode: 'simv_prvc', phys: { drive: 0.75, sedation: 0.05 }, settings: { trig: 2.0 } }), o: ['Missed (ineffective) triggering', 'Auto-triggering', 'Leak', 'Pneumothorax'], a: 0, e: 'The trigger is too insensitive for this patient (or auto-PEEP must be overcome first). Reduce trigger flow; consider NAVA.' }
   ] },
   { id: 'L7', title: 'Arterial blood gas interpretation', steps: [
@@ -1294,7 +1294,7 @@ const SCENARIOS = [
     ] },
   { id: 'S1', title: 'Routine postoperative ventilator management', short: 'Routine post-op', domains: ['fund', 'wave', 'abg'],
     brief: '4-month-old, 6.0 kg, POD 0 after VSD and ASD closure. Biventricular circulation with good function on echo. Intubated with a 4.0 uncuffed ETT. You are taking over care. Review the ventilator, interpret the settings and decide whether any change is needed.',
-    setup: { preset: 'infant', phys: { wt: 6.0, sedation: 0.45, atel: 0.15 }, mode: 'simv_prvc', settings: { vt: 48, rate: 20, peep: 5, fio2: 40, ti: 0.6, ps: 8 }, alarms: { vteLow: 30, vteHigh: 70, mvLow: 0.6, mvHigh: 2.2 } },
+    setup: { preset: 'infant', phys: { wt: 6.0, sedation: 0.45, atel: 0.15 }, mode: 'simv_prvc', settings: { vt: 48, rate: 20, peep: 5, fio2: 40, ti: 0.6, ps: 10 }, alarms: { vteLow: 30, vteHigh: 70, mvLow: 0.6, mvHigh: 2.2 } },
     questions: [
       { id: 'q1', d: 'fund', pts: 2, q: 'The set target VT is how many mL/kg?', o: ['6', '7', '8', '9'], a: 2 },
       { id: 'q2', d: 'fund', pts: 2, q: 'Mandatory breaths in this mode are…', o: ['Volume-controlled with constant flow', 'Pressure-regulated, volume-targeted and time-cycled; pressure adjusts breath to breath', 'Flow-cycled pressure support', 'Edi-triggered'], a: 1 },
@@ -1308,7 +1308,7 @@ const SCENARIOS = [
     ], critical: [] },
   { id: 'S2', title: 'Respiratory acidosis', short: 'Resp. acidosis', domains: ['abg', 'mech'],
     brief: '9-month-old, 8 kg, 6 hours after Tetralogy of Fallot repair. Heavily sedated. The bedside nurse reports EtCO2 trending up over the last hour. Evaluate and manage.',
-    setup: { preset: 'infant', phys: { sedation: 1, drive: 0.25, Cfactor: 0.85 }, mode: 'simv_pc', settings: { pc: 11, rate: 19, peep: 5, fio2: 35, ti: 0.6, ps: 8 } },
+    setup: { preset: 'infant', phys: { sedation: 1, drive: 0.25, Cfactor: 0.85 }, mode: 'simv_pc', settings: { pc: 16, rate: 19, peep: 5, fio2: 35, ti: 0.6, ps: 10 } },
     questions: [
       { id: 'q1', d: 'abg', pts: 3, q: 'Interpret the first ABG:', o: ['Acute respiratory acidosis', 'Metabolic acidosis with respiratory compensation', 'Compensated respiratory acidosis', 'Normal'], a: 0 },
       { id: 'q2', d: 'abg', pts: 2, q: 'The most appropriate correction is to…', o: ['Increase FiO2', 'Increase minute ventilation (rate and/or PC) within safe VT and pressure limits', 'Give sodium bicarbonate', 'Increase PEEP to 10'], a: 1 },
@@ -1317,15 +1317,15 @@ const SCENARIOS = [
     reasoning: { d: 'abg', pts: 3, prompt: 'Explain the change you made, the effect you predicted, and how you confirmed it.' },
     rubric: [
       { id: 'r1', d: 'abg', pts: 2, text: 'Obtained an ABG before changing settings', check: (c) => c.abgs.length > 0 && c.abgs[0].ct <= H.firstChangeT(c) },
-      { id: 'r2', d: 'abg', pts: 3, text: 'Increased minute ventilation (rate or PC/VT)', check: (c) => c.eng.set.rate > 19 || c.eng.set.pc > 11 || c.eng.mode === 'simv_prvc' },
+      { id: 'r2', d: 'abg', pts: 3, text: 'Increased minute ventilation (rate or PC/VT)', check: (c) => c.eng.set.rate > 19 || c.eng.set.pc > 16 || c.eng.mode === 'simv_prvc' },
       { id: 'r3', d: 'mech', pts: 2, text: 'Final VTe ≤ 9 mL/kg and Ppeak ≤ 30 cmH2O', check: (c) => c.final.VTkg <= 9 && c.final.Ppeak <= 30 },
       { id: 'r4', d: 'abg', pts: 2, text: 'Obtained a follow-up ABG after the change', check: (c) => H.abgAfterChange(c) },
       { id: 'r5', d: 'abg', pts: 2, text: 'PaCO2 improved by ≥ 10 mmHg', check: (c) => c.startGas.PaCO2 - c.eng.g.PaCO2 >= 10 }
     ], critical: [ { id: 'c1', text: 'Ppeak above 35 cmH2O at case end (harmful pressure)', check: (c) => c.final.Ppeak > 35 } ] },
   { id: 'S3', title: 'Worsening lung compliance', short: 'Falling compliance', domains: ['mech', 'wave'],
     brief: '3-month-old, 5 kg, POD 1 after arterial switch. Stable overnight. Over the last few minutes the regulated inspiratory pressure has been climbing. Evaluate.',
-    setup: { preset: 'infant', phys: { wt: 5, sedation: 0.7, atel: 0.15 }, mode: 'simv_prvc', settings: { vt: 35, rate: 24, peep: 5, fio2: 35, ti: 0.55, ps: 8 }, alarms: { vteLow: 22, vteHigh: 55, mvLow: 0.5, mvHigh: 1.8 } },
-    timeline: [ { at: 15, fn: (a) => { a.ramp('atel', 0.8, 70); a.ramp('edema', 0.25, 70); } } ],
+    setup: { preset: 'infant', phys: { wt: 5, sedation: 0.7, atel: 0.15 }, mode: 'simv_prvc', settings: { vt: 35, rate: 24, peep: 5, fio2: 35, ti: 0.55, ps: 10 }, alarms: { vteLow: 22, vteHigh: 55, mvLow: 0.5, mvHigh: 1.8 } },
+    timeline: [ { at: 15, fn: (a) => { a.ramp('atel', 0.65, 70); a.ramp('edema', 0.2, 70); } } ],
     questions: [
       { id: 'q1', d: 'mech', pts: 3, q: 'Ppeak has risen while VTe is unchanged. In PRVC this indicates…', o: ['Improved compliance', 'Reduced compliance or increased resistance — the ventilator is raising pressure to keep VT', 'A leak', 'Over-sedation'], a: 1 },
       { id: 'q2', d: 'mech', pts: 3, q: 'If this patient were in SIMV (PC) with an unchanged PC setting, the same change would cause…', o: ['Higher Ppeak', 'Falling VT and rising PaCO2', 'No change', 'Higher VT'], a: 1 },
@@ -1371,7 +1371,7 @@ const SCENARIOS = [
     ], critical: [] },
   { id: 'S6', title: 'Air trapping / auto-PEEP', short: 'Air trapping', domains: ['wave', 'mech', 'cardio'],
     brief: '2-year-old, 12 kg, with reactive airway disease, POD 1 after VSD repair. Developed bronchospasm after a transport to CT. Wheezy, and blood pressure has been drifting down over the last 20 minutes.',
-    setup: { preset: 'child', phys: { wt: 12, ett: 4.5, Rfactor: 10, sedation: 1, drive: 0.2, reserve: 0.4, deadSpace: 0.15 }, mode: 'simv_pc', settings: { pc: 16, rate: 32, ti: 1.0, peep: 5, fio2: 40 }, alarms: { vteLow: 50, vteHigh: 140, mvLow: 1.2, mvHigh: 5, rrHigh: 50 } },
+    setup: { preset: 'child', phys: { wt: 12, ett: 4.5, Rfactor: 10, sedation: 1, drive: 0.2, reserve: 0.4, deadSpace: 0.15 }, mode: 'simv_pc', settings: { pc: 20, rate: 32, ti: 1.0, peep: 5, fio2: 40 }, alarms: { vteLow: 50, vteHigh: 140, mvLow: 1.2, mvHigh: 5, rrHigh: 50 } },
     questions: [
       { id: 'q1', d: 'wave', pts: 3, q: 'Expiratory flow does not return to zero before the next breath. This means…', o: ['Leak', 'Incomplete exhalation with auto-PEEP', 'Low compliance', 'Patient effort'], a: 1 },
       { id: 'q2', d: 'cardio', pts: 3, q: 'Why is blood pressure falling?', o: ['Sepsis', 'Auto-PEEP raises intrathoracic pressure and reduces venous return', 'Hypocapnia', 'Overdose of PS'], a: 1 },
@@ -1403,7 +1403,7 @@ const SCENARIOS = [
     ], critical: [ { id: 'c1', text: 'FiO2 not increased within 90 s of SpO2 falling below 85%', check: (c) => c.spo2LowT != null && !c.changes.some(x => x.key === 'fio2' && x.to > 50 && x.t - c.spo2LowT <= 90) }, { id: 'c2', text: 'No call for help during crisis', check: (c) => !H.help(c) } ] },
   { id: 'S8', title: 'Glenn physiology and intrathoracic pressure', short: 'Glenn', domains: ['cardio', 'abg'],
     brief: '7-month-old, 7 kg, POD 1 after bidirectional Glenn, Hb 15. Ventilated with a lung-recruitment approach overnight. SpO2 low 70s, irritable when stimulated, cerebral NIRS low.',
-    setup: { preset: 'infant', phys: { wt: 7, cardiac: 'glenn', hb: 15, sedation: 0.6 }, mode: 'simv_pc', settings: { pc: 16, peep: 10, ti: 0.9, rate: 26, fio2: 50, ps: 8 }, alarms: { vteLow: 30, vteHigh: 110 } },
+    setup: { preset: 'infant', phys: { wt: 7, cardiac: 'glenn', hb: 15, sedation: 0.6 }, mode: 'simv_pc', settings: { pc: 16, peep: 10, ti: 0.9, rate: 26, fio2: 50, ps: 10 }, alarms: { vteLow: 30, vteHigh: 110 } },
     questions: [
       { id: 'q1', d: 'cardio', pts: 3, q: 'Expected SpO2 range for a stable Glenn patient:', o: ['≥ 95%', '75–85%', '60–65%', '90–95%'], a: 1 },
       { id: 'q2', d: 'cardio', pts: 3, q: 'Why might mild hypercapnia improve oxygenation after a Glenn?', o: ['It raises PVR', 'It raises cerebral blood flow and therefore SVC (pulmonary) blood flow', 'It increases FiO2', 'It reduces dead space'], a: 1 }
@@ -1438,7 +1438,7 @@ const SCENARIOS = [
     ], critical: [] },
   { id: 'S10', title: 'NAVA and patient–ventilator dyssynchrony', short: 'NAVA', domains: ['nava', 'wave'],
     brief: '6-week-old, 4 kg, POD 5 after truncus arteriosus repair. Awake, strong drive, poorly synchronized on SIMV (PRVC). An Edi catheter is in place and the team wants to trial NAVA.',
-    setup: { preset: 'infant', phys: { wt: 4, ett: 3.5, drive: 0.75, sedation: 0.05, leak: 0.12, ediCatheter: true }, mode: 'simv_prvc', settings: { vt: 26, rate: 30, trig: 1.5, ps: 6, ti: 0.5, nava: 1.0, bpc: 12, brate: 30, bti: 0.5, apnea: 5 }, alarms: { vteLow: 16, vteHigh: 45, mvLow: 0.4, mvHigh: 2 } },
+    setup: { preset: 'infant', phys: { wt: 4, ett: 3.5, drive: 0.75, sedation: 0.05, leak: 0.12, ediCatheter: true }, mode: 'simv_prvc', settings: { vt: 26, rate: 30, trig: 1.5, ps: 8, ti: 0.5, nava: 1.0, bpc: 15, brate: 30, bti: 0.5, apnea: 5 }, alarms: { vteLow: 16, vteHigh: 45, mvLow: 0.4, mvHigh: 2 } },
     timeline: [ { at: 0, fn: (a) => { a.flags.navaT = null; } }, { every: true, fn: (a) => {
       if (a.eng.mode === 'nava' && a.flags.navaT == null) a.flags.navaT = a.caseT();
       if (a.flags.navaT != null && !a.flags.displaced && a.caseT() - a.flags.navaT > 45) { a.flags.displaced = true; a.flags.dispT = a.caseT(); a.eng.phys.ediPos = -5; a.bedside('The infant was repositioned for a skin check.'); }
@@ -1483,7 +1483,7 @@ const KIND_COLOR = { 1: '#6F93B0', 2: '#4BD48A', 3: '#FF7AC0', 4: '#F0A044', 5: 
 
 const App = {
   eng: new Engine(), op: VARIANT, paused: false, breathSpeed: 1, physAccel: 4, sound: true,
-  overlays: { annotate: false, pmus: false, expect: true, calcs: false, labels: true },
+  overlays: { annotate: false, pmus: false, expect: true, calcs: false, labels: false },
   blind: false, timeScale: 10, view: 'waves', frozen: false, freezeT: 0, review: 0,
   config: Object.assign({}, DEFAULT_CONFIG, store.get('cvl_config', {})),
   caseCfg: null, caseStart: null, caseStartBT: 0, abgs: [], actLog: [], feed: [], ramps: [], timeline: [], flags: {},
@@ -1676,7 +1676,6 @@ function drawWaves() {
       }
       if (App.overlays.annotate) annotateBreaths(x, xOf, y0, t0 + (sweep ? gap : 0), tEnd, d);
     }
-    if (App.overlays.labels) breathMarks(x, c2.k, xOf, yOf, y0, y1, t0 + (sweep ? gap : 0), tEnd, d);
     x.strokeStyle = c2.col; x.lineWidth = 1.8 * d;
     polyline(x, c2.k, xOf, yOf, t0, tEnd, sweep, gap);
     if (App.overlays.labels) breathLabels(x, c2.k, xOf, yOf, y0, t0 + (sweep ? gap : 0), tEnd, d);
@@ -1698,21 +1697,13 @@ function visibleBreaths(t0, t1) {
   for (const b of list) { if (b.kind === 'bag' || b.start < t0 || b.start > t1 || !b.tiAct) continue; out.push(b); }
   return out;
 }
-function breathMarks(x, key, xOf, yOf, y0, y1, t0, t1, d) {
-  // faint band behind each spontaneous inspiration so patient-triggered breaths stand out from mandatory ones
-  for (const b of visibleBreaths(t0, t1)) {
-    if (b.mand) continue;
-    const xa = xOf(b.start), xb = xOf(b.start + b.tiAct); if (xb <= xa) continue;
-    x.fillStyle = 'rgba(75,212,138,.10)'; x.fillRect(xa, y0, xb - xa, y1 - y0);
-  }
-}
 function breathLabels(x, key, xOf, yOf, y0, t0, t1, d) {
   if (key !== 'p' && key !== 'v') return;
   x.font = `600 ${11 * d}px 'Barlow Semi Condensed', sans-serif`; x.textAlign = 'center';
   for (const b of visibleBreaths(t0, t1)) {
     const xx = xOf(b.start + b.tiAct * 0.5); if (xx < 56 * d) continue;
     const val = key === 'p' ? b.Pmax : b.VTi, y = yOf(key === 'p' ? b.Pmax : Math.max(0, b.Vmax - b.Vstart, b.VTi));
-    x.fillStyle = b.mand ? '#A9C4DA' : KIND_COLOR[KIND_CODE[b.kind]] || '#4BD48A';
+    x.fillStyle = key === 'p' ? '#F4D03F' : '#5AB0FF';
     x.fillText(fmt(val, key === 'v' && val < 30 ? 1 : 0), xx, Math.max(y0 + 11 * d, y - 4 * d));
   }
   x.textAlign = 'left';
@@ -1777,15 +1768,11 @@ function renderNums() {
   s += nv('Ppeak', 'cmH₂O', D(m.Ppeak, 0), 'cP big');
   s += nv('Pmean', 'cmH₂O', D(m.Pmean, 0), 'cP big');
   s += nv('PEEP', 'cmH₂O', D(m.PEEP, 0), 'cP');
-  s += nv('RR total', 'b/min', D(m.RR, 0), 'cF big');
-  const pv = (P, V) => P == null || disc ? '—' : `${fmt(P, 0)}<small> / </small>${fmt(V, V < 30 ? 1 : 0)}`;
-  s += nv('Spont breaths  Ppeak / VTe', 'cmH₂O / mL', pv(m.spP, m.spVT), 'wide cS' + (m.spP == null ? ' dim' : ''));
-  s += nv('Mand breaths  Ppeak / VTe', 'cmH₂O / mL', pv(m.mdP, m.mdVT), 'wide cM' + (m.mdP == null ? ' dim' : ''));
+  s += nv('RR', 'b/min', D(m.RR, 0), 'cF big');
   s += nv('VTi', 'mL', D(m.VTi, m.VTi < 30 ? 1 : 0), 'cV');
   s += nv('VTe', 'mL', D(m.VTe, m.VTe < 30 ? 1 : 0), 'cV big');
   s += nv('VTe/kg', 'mL/kg', D(m.VTkg, 1), 'cV');
   s += nv('MVe', 'L/min', D(m.MVe, 2), 'cV');
-  s += nv('RR mand / spont', 'b/min', disc ? '—' : `${fmt(m.RRmand)} / ${fmt(m.RRsp)}`, 'cF');
   s += nv('MVe spont', 'L/min', D(m.MVsp, 2), 'cV');
   s += nv('Cdyn', 'mL/cmH₂O', m.Cdyn == null || disc ? '—' : fmt(m.Cdyn, m.Cdyn < 10 ? 1 : 0), 'cW');
   s += nv('Leak', '%', D(m.leak, 0), m.leak > 15 ? 'cE' : 'cW');
@@ -2843,7 +2830,7 @@ function setOp(op) {
   $('#tabCaseBtn').textContent = op === 'learn' ? 'Lessons' : op === 'check' ? 'Check-off' : 'Case';
   const showDock = op === 'teach';
   ['#selScenario', '#selDiff', '#btnLoadScn'].forEach(s => { const x = $(s); (x.closest('label') || x).hidden = !showDock; });
-  if (op === 'check') { App.savedOverlays = Object.assign({}, App.overlays); App.overlays = { annotate: false, pmus: false, expect: false, calcs: false, labels: true }; App.blind = false; $('#btnFinish').hidden = true; App.loadCase({ preset: 'infant', mode: 'simv_prvc' }); App.flashStatus('Start a check-off in the Check-off tab. Practice freely on this patient until then.'); }
+  if (op === 'check') { App.savedOverlays = Object.assign({}, App.overlays); App.overlays = { annotate: false, pmus: false, expect: false, calcs: false }; App.blind = false; $('#btnFinish').hidden = true; App.loadCase({ preset: 'infant', mode: 'simv_prvc' }); App.flashStatus('Start a check-off in the Check-off tab. Practice freely on this patient until then.'); }
   else { if (App.savedOverlays) { App.overlays = App.savedOverlays; App.savedOverlays = null; } }
   if (op === 'learn') { $('#btnFinish').hidden = true; App.lesson = null; App.flashStatus('Choose a module in the Lessons tab.'); }
   if (op === 'teach') { App.flashStatus('Full control of the ventilator and patient. Load a scenario or build a patient in the Instructor tab.'); $('#btnFinish').hidden = !App.scn; }
