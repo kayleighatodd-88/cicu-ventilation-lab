@@ -411,6 +411,7 @@ const MODEL_NOTES = [
   'Hemodynamics: lumped steady-state model with time constants. Mean intrathoracic pressure (a compliance-dependent fraction of mean airway pressure plus auto-PEEP) reduces venous return according to hemodynamic reserve, reduces LV afterload when LV function is poor, impedes passive (Glenn/Fontan) pulmonary blood flow, and raises PVR at low and high lung volumes. Intrathoracic pressure includes auto-PEEP averaged over the last four breaths (auto-PEEP is counted only when expiratory flow is still present at the next breath). After a Glenn, high SVC pressure diverts part of SVC flow away from the lungs (a stand-in for decompressing collaterals), so high Pmean lowers SpO2.',
   'PVR responds to alveolar hypoxia, acidosis, hypercapnia, lung volume, stimulation and inhaled nitric oxide, scaled by a reactivity setting. In parallel (shunt-dependent) circulation, hyperoxia and alkalosis lower PVR steeply and Qp:Qs follows the SVR/PVR ratio, so oxygen and hyperventilation cause systemic steal. RV output becomes afterload-limited when PVR exceeds RV capacity.',
   'Acid–base: Henderson–Hasselbalch with acute CO2 buffering (+1 mEq/L HCO3 per 10 mmHg). Lactate rises when oxygen extraction exceeds ≈40% or systemic flow falls below ≈78% of baseline (regional hypoperfusion), and lowers HCO3. Renal compensation is not modelled (cases set baseline HCO3 where chronic compensation applies).',
+  'Rhythms: sinus, junctional ectopic tachycardia (retrograde atria, ~1.45× baseline rate, faster with agitation and catecholamines), complete heart block (escape ~0.55× baseline; sinus atria at the reflex rate), atrial flutter (atrial ~300–380/min, 2:1) and atrial/AV sequential pacing. Loss of AV synchrony costs ~15% of output (~22% in single-ventricle circulations); rates above ~1.35× baseline shorten filling. Cannon a waves appear when the atria contract during ventricular systole; in heart block each beat\'s pulse pressure depends on whether an atrial contraction preceded it.',
   'Bedside waveforms: ECG, arterial, CVP and pleth share one cardiac timing in seconds (PR, ejection time and QT shorten only modestly with heart rate). The arterial notch height and diastolic run-off follow SVR, stroke volume and (in parallel circulation) diastolic run-off into the lungs; the CVP a, c, x, v and y waves follow RV stiffness, functional tricuspid regurgitation (RV failure against high PVR), filling pressure and tamponade; the pleth amplitude follows a relative perfusion index (cardiac output and vasoconstriction), loses its notch and rounds off with poor perfusion, shows the same respiratory variation as the arterial line and a motion artifact when the patient is agitated.',
   'Not modelled: gas compression/circuit compliance, humidity, flow-dependent tube resistance, regional lung mechanics, drug pharmacokinetics, renal compensation, and the proprietary Getinge software behavior.'
 ];
@@ -448,7 +449,7 @@ function defaultPhys(presetKey) {
     cardiac: 'biv', pfo: false, fen: 0.12, hb: P.hb, hco3Base: 24,
     obstruction: 0, obstructionType: 'secretions', disconnected: false, extubated: false, mainstem: false, ptx: 0,
     ediCatheter: false, ediPos: 0, stim: 0, ino: false, inotrope: 0, bagging: false,
-    artDamp: 'normal', tr: 0, tamp: 0
+    artDamp: 'normal', tr: 0, tamp: 0, rhythm: 'sinus'
   };
 }
 
@@ -1062,8 +1063,20 @@ class Engine {
     const brT = p.cardiac === 'biv' ? 0.65 : 0.5;
     if (g.SaO2 < brT) HRt *= clamp(1 - (brT - g.SaO2) * 2.2, 0.3, 1);
     if (g.pH < 7.0) HRt *= clamp(1 - (7.0 - g.pH) * 1.5, 0.5, 1);
-    h.HR = ease(h.HR, HRt, dtp, 8);
-    const hrF = clamp(1 + 0.35 * (h.HR / base.HR0 - 1), 0.4, 1.25);
+    // ---- rhythm: HRt above is the sinus (atrial) rate the reflexes ask for; the rhythm decides the ventricular rate
+    // and whether atrial contraction still fills the ventricle (AV synchrony)
+    const rh = p.rhythm || 'sinus';
+    let vRate = HRt, aRate = HRt, sync = 1, tauHR = 8;
+    if (rh === 'jet') { vRate = (p.jetRate || base.HR0 * 1.45) * (1 + 0.12 * p.stim + 0.08 * p.inotrope); aRate = vRate; sync = 0; tauHR = 3; }   // junctional focus, retrograde atria: catecholamines/agitation speed it up
+    else if (rh === 'chb') { vRate = p.escRate || base.HR0 * 0.55; sync = 0; tauHR = 2; }                                                // slow escape; sinus atria march through
+    else if (rh === 'flutter') { aRate = p.flRate || (p.wt < 10 ? 380 : 300); vRate = aRate / 2; sync = 0.4; tauHR = 2; }               // 2:1 conduction
+    else if (rh === 'aai' || rh === 'ddd') { vRate = Math.max(p.pacedRate || base.HR0, rh === 'ddd' ? HRt : 0); aRate = vRate; tauHR = 2; } // paced, AV synchronous
+    h.aRate = ease(h.aRate || aRate, aRate, dtp, tauHR);
+    h.HR = ease(h.HR, vRate, dtp, tauHR);
+    // output: faster rate helps until diastolic filling time is lost; losing the atrial kick costs ~15% (more in a single ventricle)
+    const rRel = h.HR / base.HR0;
+    const syncF = 1 - (1 - sync) * (p.cardiac === 'biv' ? 0.15 : 0.22);
+    const hrF = clamp(1 + 0.35 * (rRel - 1) - 0.9 * Math.max(0, rRel - 1.35), 0.4, 1.25) * syncF;
     let CO, Qp, CVP;
     this.rlShunt = 0;
     if (p.cardiac === 'biv') {
@@ -1573,9 +1586,27 @@ function cardTiming(HR) {
   return { T, ET, PR: clamp(0.07 + 0.08 * T, 0.08, 0.16), QT: clamp(ET + 0.06, 0.22, 0.42) };
 }
 const phOf = (s, T) => ((QRS_PH + s / T) % 1 + 1) % 1;       // seconds after QRS → beat phase
-function ecgShape(t, ct) {
-  const { T, PR, QT } = ct;
-  return 0.12 * g2(t, -PR, 0.022, T) - 0.12 * g2(t, -0.016, 0.007, T) + 1.0 * g2(t, 0, 0.010, T) - 0.25 * g2(t, 0.02, 0.010, T) + 0.28 * g2(t, QT - 0.08, 0.045, T);
+// Rhythms. The ventricular part (QRS, T) follows the beat clock; the atrial part follows an atrial clock tA
+// (seconds since the P-wave centre, period Ta) that is locked to the QRS in sinus/paced rhythm, retrograde
+// just after the QRS in JET, independent in complete heart block, and a 2:1 flutter cycle in atrial flutter.
+const RHYTHMS = { sinus: 'Sinus rhythm', jet: 'Junctional ectopic tachycardia (JET)', chb: 'Complete heart block', flutter: 'Atrial flutter (2:1)', aai: 'Atrial paced (AAI)', ddd: 'AV sequential paced (DDD)' };
+function atrialClock(tq, ct, rh, aPh, aRate) {
+  if (rh === 'jet') return { tA: ((tq - 0.06) % ct.T + ct.T) % ct.T, Ta: ct.T };            // retrograde P in the ST segment
+  if (rh === 'flutter') { const Ta = ct.T / 2; return { tA: ((tq + 0.1) % Ta + Ta) % Ta, Ta }; } // 2:1, F waves locked to every other QRS
+  if (rh === 'chb') { const Ta = 60 / Math.max(30, aRate); return { tA: aPh * Ta, Ta }; }      // atria march through independently
+  return { tA: ((tq + ct.PR) % ct.T + ct.T) % ct.T, Ta: ct.T };                               // sinus / paced: P precedes the QRS by the PR interval
+}
+function ecgShape(t, ct, rh, tA, Ta) {
+  const { T, QT } = ct;
+  rh = rh || 'sinus';
+  let v;
+  if (rh === 'ddd') v = 1.2 * g2(t, -0.035, 0.0025, T) + 0.75 * g2(t, 0.005, 0.022, T) - 0.45 * g2(t, 0.045, 0.02, T) - 0.3 * g2(t, QT - 0.06, 0.05, T); // V spike, wide paced QRS, discordant T
+  else v = -0.12 * g2(t, -0.016, 0.007, T) + 1.0 * g2(t, 0, 0.010, T) - 0.25 * g2(t, 0.02, 0.010, T) + 0.28 * g2(t, QT - 0.08, 0.045, T);
+  if (tA == null) return v;
+  if (rh === 'flutter') { const u = tA / Ta; v += u < 0.78 ? 0.08 - 0.3 * (u / 0.78) : -0.22 + 0.3 * ((u - 0.78) / 0.22); } // negative sawtooth F waves (lead II)
+  else if (rh === 'jet') v += -0.07 * g2(tA, 0, 0.02, Ta);                                    // small inverted retrograde P
+  else { v += 0.12 * g2(tA, 0, 0.022, Ta); if (rh === 'aai' || rh === 'ddd') v += 1.1 * g2(tA, -0.03, 0.0025, Ta); } // P wave (with atrial pacing spike)
+  return v;
 }
 // Arterial pressure, normalized 0 (end-diastole) to 1 (systolic peak): brisk upstroke after the pre-ejection delay,
 // rounded peak with a late-systolic shoulder (reflected wave, larger with high SVR), dicrotic notch at aortic
@@ -1596,7 +1627,7 @@ function artRing(t, ct, prm) { const x = ((t - 0.05) % ct.T + ct.T) % ct.T - prm
 // against a closed valve), y descent when the tricuspid valve opens. prm sets each amplitude from the physiology.
 function cvpShape(t, ct, prm) {
   const { T, ET, PR } = ct, tr = prm.tr;
-  return prm.a * g2(t, -PR + 0.08, 0.035, T) + prm.c * g2(t, 0.045, 0.013, T) - prm.x * g2(t, ET * 0.7, 0.045, T)
+  return prm.c * g2(t, 0.045, 0.013, T) - prm.x * g2(t, ET * 0.7, 0.045, T) // the a wave is added separately from the atrial clock (cvpAtrial)
     + prm.v * g2(t, ET + 0.04 - 0.08 * tr, 0.045 + 0.06 * tr, T) - prm.y * g2(t, ET + 0.14, 0.045, T)
     + prm.dia * g2(t, ET + 0.19, 0.12, T) - prm.off; // dia: pressure held up through diastole (tamponade: no y descent)
 }
@@ -1604,6 +1635,14 @@ function cvpShape(t, ct, prm) {
 function cvpMean(ct, prm) {
   const tr = prm.tr, s = Math.sqrt(2 * Math.PI) / ct.T;
   return s * (prm.a * 0.035 + prm.c * 0.013 - prm.x * 0.045 + prm.v * (0.045 + 0.06 * tr) - prm.y * 0.045 + prm.dia * 0.12);
+}
+// Atrial component of the CVP from the atrial clock: the a wave peaks ~80 ms after the P wave. If the atrium
+// contracts while the ventricle is in systole (tricuspid valve closed) the a wave becomes a tall cannon a wave —
+// every beat in JET, intermittently in complete heart block. Flutter replaces the a wave with small flutter waves.
+function cvpAtrial(t, ct, tA, Ta, rh, a) {
+  if (rh === 'flutter') return 0.55 * Math.sin(2 * Math.PI * tA / Ta);
+  const tt = ((t % ct.T) + ct.T) % ct.T, sys = 1 / (1 + Math.exp(-(tt - 0.02) / 0.01)) / (1 + Math.exp((tt - ct.ET - 0.02) / 0.015));
+  return a * (1 + 1.8 * sys) * g2(tA, 0.08, 0.035, Ta);
 }
 // Pulse oximeter plethysmogram, normalized: arrives later than the arterial line (peripheral transit), slower
 // upstroke, rounded peak, dicrotic notch on the downslope when perfusion is good, smooth decay. With poor
@@ -1653,13 +1692,31 @@ function pushSample() {
   cvP.off = 0; cvP.off = cvpMean(ct, cvP);
   const perf = clamp(Math.pow(Math.max(COrel, 0.05), 1.2) / Math.pow(SVRrel, 0.8), 0.03, 1.4);   // perfusion index (relative)
   const plP = { delay: 0.17, tone: clamp(SVRrel - 0.8, 0, 1), notch: 0.09 * clamp((perf - 0.35) / 0.4, 0, 1), round: clamp((0.45 - perf) / 0.35, 0, 1) };
-  // teaching-label positions follow the timing
-  CVP_MARKS = [['a', phOf(-ct.PR + 0.08, ct.T)], ['c', phOf(0.035, ct.T)], ['x', phOf(ct.ET * 0.65, ct.T)], ['v', phOf(ct.ET + 0.04 - 0.08 * trE, ct.T)], ['y', phOf(ct.ET + 0.15, ct.T)]];
+  // --- rhythm: atrial clock, and the filling each ventricular beat gets from the atrium
+  const rh = p.rhythm || 'sinus';
+  App.aBeat = ((App.aBeat || 0) + 0.01 * (h.aRate || h.HR) / 60) % 1;
+  const ac = atrialClock(tq, ct, rh, App.aBeat, h.aRate || h.HR);
+  if (rh === 'flutter') { cvP.a = 0; cvP.off = cvpMean(ct, cvP); }
+  if (App.prevBeat != null && ((App.prevBeat < QRS_PH && ph >= QRS_PH) || (App.prevBeat > ph && ph >= QRS_PH))) {
+    // at each QRS: in heart block a well-timed atrial contraction (40–220 ms before) adds preload; otherwise the beat is weaker
+    const sinceA = ((ac.tA - 0.08) % ac.Ta + ac.Ta) % ac.Ta;
+    App.beatPP = rh === 'chb' ? (sinceA > 0.04 && sinceA < 0.22 ? 1.12 : 0.9) : rh === 'flutter' ? 1 + (Math.random() - 0.5) * 0.06 : 1;
+  }
+  App.prevBeat = ph;
+  const beatPP = App.beatPP || 1;
+  // teaching-label positions follow the timing (and the rhythm)
+  if (rh === 'jet') CVP_MARKS = [['cannon a', phOf(0.06 + 0.08, ct.T)], ['v', phOf(ct.ET + 0.04 - 0.08 * trE, ct.T)], ['y', phOf(ct.ET + 0.15, ct.T)]];
+  else if (rh === 'chb' || rh === 'flutter') CVP_MARKS = [['c', phOf(0.035, ct.T)], ['v', phOf(ct.ET + 0.04 - 0.08 * trE, ct.T)]];
+  else CVP_MARKS = [['a', phOf(-ct.PR + 0.08, ct.T)], ['c', phOf(0.035, ct.T)], ['x', phOf(ct.ET * 0.65, ct.T)], ['v', phOf(ct.ET + 0.04 - 0.08 * trE, ct.T)], ['y', phOf(ct.ET + 0.15, ct.T)]];
   ART_NOTCH_PH = phOf(0.05 + ct.ET, ct.T);
-  // each 10 ms sample looks at 5 points inside its interval so narrow features (R wave, c wave) are not
-  // aliased: the ECG keeps the extreme value (constant QRS height), the CVP keeps the average
+  // each 10 ms sample looks at 5 points inside its interval so narrow features (R wave, pacing spikes, c wave) are
+  // not aliased: the ECG keeps the extreme value (constant QRS height), the CVP keeps the average
   let ecgV = 0, cvpS = 0;
-  for (let k = 0; k < 5; k++) { const tk = tq - 0.002 * k, v = ecgShape(tk, ct); if (Math.abs(v) > Math.abs(ecgV)) ecgV = v; cvpS += cvpShape(tk, ct, cvP) / 5; }
+  for (let k = 0; k < 5; k++) {
+    const tk = tq - 0.002 * k, tAk = ((ac.tA - 0.002 * k) % ac.Ta + ac.Ta) % ac.Ta;
+    const v = ecgShape(tk, ct, rh, tAk, ac.Ta); if (Math.abs(v) > Math.abs(ecgV)) ecgV = v;
+    cvpS += (cvpShape(tk, ct, cvP) + cvpAtrial(tk, ct, tAk, ac.Ta, rh, cvP.a)) / 5;
+  }
   ring.ecg[i] = ecgV;
   const lastB = e.breaths.length ? e.breaths[e.breaths.length - 1] : null;
   const pip = lastB ? lastB.Pmax : e.set.peep + 10, peep = p.bagging ? 5 : e.set.peep;
@@ -1672,7 +1729,7 @@ function pushSample() {
   // pulse pressure variation with positive-pressure breaths (preload-dependent), plus pulsus paradoxus in tamponade
   // (systolic pressure falls during spontaneous inspiration)
   const ppDrop = clamp((h.ppv || 0) * 1.6 * pawN + tamp * 0.3 * pmN, 0, 0.75);
-  const sbp = h.SBP - ppDrop * (h.SBP - h.DBP);
+  const sbp = h.DBP + ((h.SBP - ppDrop * (h.SBP - h.DBP)) - h.DBP) * beatPP;
   ring.ph[i] = ph;
   // arterial line: damping changes what the transducer shows, not the true pressure
   let an = artShape(tq, ct, artP);
@@ -1693,7 +1750,7 @@ function pushSample() {
   // respiratory variation: smooth rise with each positive-pressure breath (scaled to its size), fall with spontaneous inspiration
   ring.cvp[i] = h.CVP + cvK * cvpS * (passive ? 0.35 : 1) + 0.12 * pawN * Math.max(2, pip - peep) - 0.3 * App.pmLP; // Glenn/Fontan: little pulsatility, no atrial kick
   // pleth: amplitude follows the perfusion index and the same respiratory variation; poor signal when SaO2 is very low
-  const amp = 0.85 * perf * (g.SaO2 > 0.3 ? 1 : 0.3) * (1 - 1.1 * ppDrop);
+  const amp = 0.85 * perf * (g.SaO2 > 0.3 ? 1 : 0.3) * (1 - 1.1 * ppDrop) * beatPP;
   let pl = 0.08 + amp * plethShape(tq, ct, plP);
   // motion artifact when the patient is agitated and moving (not when paralysed or deeply sedated)
   const mot = p.drive > 0.05 && p.sedation < 0.9 ? clamp((p.stim - 0.25) / 0.6, 0, 1) : 0;
@@ -2416,9 +2473,10 @@ const ACTIONS = [
   ['capno', 'Examine capnography'], ['waves', 'Inspect respiratory waveforms'], ['cxr', 'Chest radiograph'], ['abg', 'Obtain ABG'], ['reassess', 'Reassess patient'],
   ['bag', 'Manual ventilation (bag)'], ['rt', 'Request respiratory therapist', 1], ['escalate', 'Escalate to attending / CICU team', 1], ['emergency', 'Activate emergency response', 1],
   ['needle', 'Needle decompression (provider)'], ['reintubate', 'ETT exchange / reintubation (team)'], ['edipos', 'Edi catheter position'],
-  ['flush', 'Arterial line fast-flush (square wave) test'], ['aline', 'Troubleshoot arterial line (level, zero, tubing, bag)']
+  ['flush', 'Arterial line fast-flush (square wave) test'], ['aline', 'Troubleshoot arterial line (level, zero, tubing, bag)'], ['aecg', 'Atrial ECG (atrial pacing wires)']
 ];
-const TEAM = [['sedation', 'Sedation / analgesia bolus'], ['paralysis', 'Neuromuscular blockade'], ['ino', 'Inhaled nitric oxide'], ['bronchodilator', 'Bronchodilator'], ['fluid', 'Fluid bolus'], ['inotrope', 'Increase inotropic support']];
+const TEAM = [['sedation', 'Sedation / analgesia bolus'], ['paralysis', 'Neuromuscular blockade'], ['ino', 'Inhaled nitric oxide'], ['bronchodilator', 'Bronchodilator'], ['fluid', 'Fluid bolus'], ['inotrope', 'Increase inotropic support'],
+  ['pacing', 'Temporary pacing via epicardial wires'], ['jettx', 'JET management: cooling, reduce catecholamines, amiodarone']];
 
 function docDepth(p) { if (p.ettDepth) return p.ettDepth; return p.wt < 5 ? Math.round((6 + p.wt) * 2) / 2 : Math.round(3 * p.ett * 2) / 2; }
 function chestText(e) {
@@ -2573,6 +2631,17 @@ function doAction(id) {
       out = !interp ? 'Fast flush performed — watch the arterial trace.' : p.artDamp === 'over' ? 'Fast flush: slow, rounded return to baseline with no oscillation — overdamped. Systolic reads low and diastolic high; MAP is usually accurate.'
         : p.artDamp === 'under' ? 'Fast flush: several oscillations before the trace settles — underdamped. Systolic reads high and diastolic low; MAP is usually accurate.' : 'Fast flush: 1–2 oscillations, then a crisp return to the waveform — optimally damped.';
       break;
+    case 'aecg': {
+      // atrial electrogram from the atrial wires: large atrial deflections make the AV relationship obvious
+      const hr = Math.round(e.h.HR), ar = Math.round(e.h.aRate || e.h.HR), rh = p.rhythm || 'sinus';
+      out = rh === 'jet' ? `Atrial electrogram: atrial deflection immediately after each QRS (retrograde VA conduction), ventricular rate ${hr}. No atrial activity before the QRS — consistent with junctional ectopic tachycardia.`
+        : rh === 'chb' ? `Atrial electrogram: atrial rate ${ar}, ventricular rate ${hr}; atrial deflections march through the QRS complexes with no fixed relationship — complete AV dissociation (complete heart block).`
+        : rh === 'flutter' ? `Atrial electrogram: regular atrial activity at ${ar}/min, two atrial deflections for every QRS (ventricular rate ${hr}) — atrial flutter with 2:1 conduction.`
+        : rh === 'aai' || rh === 'ddd' ? `Atrial electrogram: paced atrial deflection precedes each QRS 1:1 at ${hr}/min — AV synchrony maintained.`
+        : `Atrial electrogram: one atrial deflection precedes each QRS with a constant PR interval, rate ${hr} — sinus rhythm.`;
+      if (!interp) out = out.replace(/ — .*$/, '.');
+      break;
+    }
     case 'aline':
       if (p.artDamp === 'over') { p.artDamp = 'normal'; out = 'Transducer leveled at the phlebostatic axis and zeroed. Air bubble found and cleared from the tubing; pressure bag re-inflated to 300 mmHg. Waveform crisp again.'; }
       else if (p.artDamp === 'under') { p.artDamp = 'normal'; out = 'Transducer leveled and zeroed. Extra extension tubing removed and replaced with short, non-compliant pressure tubing. Ringing resolved.'; }
@@ -2595,6 +2664,26 @@ function requestTeam(what) {
     if (what === 'bronchodilator') a.ramp('Rfactor', Math.max(1, p.Rfactor * 0.45), 60);
     if (what === 'fluid') p.reserve = Math.min(1, p.reserve + 0.25);
     if (what === 'inotrope') { p.inotrope = 1; p.lvf = Math.min(1, p.lvf + 0.1); p.rvf = Math.min(1, p.rvf + 0.15); }
+    if (what === 'pacing') {
+      const e2 = a.eng, hr = e2.h.HR, hr0 = e2.base.HR0;
+      // JET: atrial overdrive pacing just above the junctional rate restores AV synchrony; CHB: AV sequential pacing;
+      // flutter: rapid atrial pacing (burst) terminates the re-entry; slow sinus: atrial pacing for rate support
+      if (p.rhythm === 'jet') { p.rhythm = 'aai'; p.pacedRate = Math.round(hr + 10); a.bedside(`Atrial overdrive pacing (AAI ${p.pacedRate}) started above the JET rate: AV synchrony restored.`); return; }
+      if (p.rhythm === 'chb') { p.rhythm = 'ddd'; p.pacedRate = Math.round(hr0); a.bedside(`AV sequential pacing (DDD ${p.pacedRate}) started: AV synchrony and rate restored.`); return; }
+      if (p.rhythm === 'flutter') { p.rhythm = 'sinus'; a.bedside('Rapid atrial pacing burst delivered: atrial flutter terminated, sinus rhythm restored.'); return; }
+      if (p.rhythm === 'sinus' && hr < 0.8 * hr0) { p.rhythm = 'aai'; p.pacedRate = Math.round(hr0); a.bedside(`Atrial pacing (AAI ${p.pacedRate}) started for rate support.`); return; }
+      if (p.rhythm === 'aai' || p.rhythm === 'ddd') { a.bedside(`Already paced (${p.rhythm.toUpperCase()} ${p.pacedRate}).`); return; }
+      a.bedside('No pacing indication: sinus rhythm at an appropriate rate. Wires checked and left connected to the pacemaker on standby.'); return;
+    }
+    if (what === 'jettx') {
+      if (p.rhythm === 'jet' || (p.rhythm === 'aai' && p.jetRate)) {
+        const r = (p.jetRate || a.eng.base.HR0 * 1.45) * 0.88; p.jetRate = r; p.stim = 0; p.inotrope = Math.max(0, p.inotrope - 0.5);
+        if (r < a.eng.base.HR0 * 1.2 && p.rhythm === 'jet') { p.rhythm = 'sinus'; a.bedside('Cooling to 35–36 °C, catecholamines weaned and amiodarone given: JET has resolved to sinus rhythm.'); }
+        else a.bedside(`Cooling to 35–36 °C, catecholamines weaned and amiodarone given: junctional rate slowing (now about ${Math.round(r)}).`);
+        return;
+      }
+      a.bedside('Not indicated: the rhythm is not JET.'); return;
+    }
     a.bedside(lab + ' given.');
   } });
 }
@@ -2618,13 +2707,15 @@ function openPatientEditor() {
     <label class="field">SpO₂ goal<input id="peSpo2" value="${esc(p.spo2Goal || App.config.spo2Targets[p.cardiac])}"></label>
     <label class="field">PaCO₂ goal<input id="pePaco2" value="${esc(p.paco2Goal || App.config.paco2Targets[p.cardiac])}"></label>
     <label class="field">Arterial line damping<select id="peDamp">${opt('normal', p.artDamp || 'normal', 'Optimally damped')}${opt('over', p.artDamp, 'Overdamped (bubble, clot, kink, soft bag)')}${opt('under', p.artDamp, 'Underdamped (long/stiff tubing, tachycardia)')}</select></label>
+    <label class="field">Rhythm<select id="peRh">${Object.keys(RHYTHMS).map(k => opt(k, p.rhythm || 'sinus', RHYTHMS[k])).join('')}</select></label>
     <label class="field">Tricuspid regurgitation<select id="peTr">${opt(0, p.tr || 0, 'None')}${opt(0.3, p.tr || 0, 'Moderate (prominent v wave)')}${opt(0.7, p.tr || 0, 'Severe (large cv wave)')}</select></label>
   </div><label class="tog"><input type="checkbox" id="pePfo" ${p.pfo ? 'checked' : ''}> Atrial communication (PFO/ASD) allowing right-to-left shunt</label>`;
   modal('Edit patient', body, [{ label: 'Cancel' }, { label: 'Apply', cls: 'primary', fn: (m) => {
     const v = (id) => m.querySelector('#' + id);
     const grp = v('peGroup').value, wt = clamp(+v('peWt').value || p.wt, 1, 90), card = v('peCard').value, ett = +v('peEtt').value, cuff = v('peCuff').checked;
     const live = { age: v('peAge').value.trim() || p.age, hb: clamp(+v('peHb').value || p.hb, 7, 20), ettDepth: +v('peDepth').value || null, fen: clamp(+v('peFen').value, 0, 0.4), pfo: v('pePfo').checked,
-      spo2Goal: v('peSpo2').value.trim(), paco2Goal: v('pePaco2').value.trim(), artDamp: v('peDamp').value, tr: +v('peTr').value };
+      spo2Goal: v('peSpo2').value.trim(), paco2Goal: v('pePaco2').value.trim(), artDamp: v('peDamp').value, tr: +v('peTr').value, rhythm: v('peRh').value };
+    if (live.rhythm !== (p.rhythm || 'sinus')) { if (live.rhythm === 'jet') live.jetRate = null; if (live.rhythm === 'aai' || live.rhythm === 'ddd') live.pacedRate = p.pacedRate || Math.round(e.base.HR0); }
     if (live.spo2Goal === App.config.spo2Targets[card]) live.spo2Goal = '';
     if (live.paco2Goal === App.config.paco2Targets[card]) live.paco2Goal = '';
     if (Math.abs(live.ettDepth - docDepth(Object.assign({}, p, { ettDepth: null }))) < 0.01) live.ettDepth = null;
@@ -2643,7 +2734,7 @@ function renderBedside() {
   const e = App.eng, p = e.phys, scn = App.scn;
   const desc = scn ? scn.brief : `${p.age}, ${fmt(p.wt, 1)} kg. ${CARDIAC_TYPES[p.cardiac]} physiology. Free-practice patient.`;
   const tgt = p.spo2Goal || App.config.spo2Targets[p.cardiac], ct = p.paco2Goal || App.config.paco2Targets[p.cardiac];
-  const lines = [p.artDamp && p.artDamp !== 'normal' ? `Arterial line ${p.artDamp === 'over' ? 'overdamped' : 'underdamped'}` : '', p.tr > 0.05 ? `Tricuspid regurgitation ${p.tr >= 0.6 ? 'severe' : p.tr >= 0.3 ? 'moderate' : 'mild'}` : ''].filter(Boolean);
+  const lines = [p.rhythm && p.rhythm !== 'sinus' && App.op !== 'check' ? RHYTHMS[p.rhythm] + ((p.rhythm === 'aai' || p.rhythm === 'ddd') ? ' ' + p.pacedRate : '') : '', p.artDamp && p.artDamp !== 'normal' ? `Arterial line ${p.artDamp === 'over' ? 'overdamped' : 'underdamped'}` : '', p.tr > 0.05 ? `Tricuspid regurgitation ${p.tr >= 0.6 ? 'severe' : p.tr >= 0.3 ? 'moderate' : 'mild'}` : ''].filter(Boolean);
   $('#ptCard').innerHTML = `<div class="pthead"><h3>Patient</h3>${App.op === 'teach' ? '<button class="btn small" id="ptEdit">Edit patient</button>' : ''}</div><p style="margin:0 0 6px">${esc(desc)}</p>
     <div class="grid2 muted"><span>${esc(p.age)} · ${fmt(p.wt, 1)} kg · Hb ${fmt(p.hb, 1)}</span><span>${esc(CARDIAC_TYPES[p.cardiac])}${p.pfo ? ' + PFO' : ''}</span><span>ETT ${fmt(p.ett, 1)} ${p.cuffed ? 'cuffed' : 'uncuffed'}</span><span>Documented depth ${fmt(docDepth(p), 1)} cm</span><span>SpO₂ goal ${esc(tgt)}</span><span>PaCO₂ goal ${esc(ct)}</span>${lines.map(l => `<span>${esc(l)}</span>`).join('')}</div>`;
   if ($('#ptEdit')) $('#ptEdit').onclick = openPatientEditor;
@@ -2741,6 +2832,9 @@ const COMPLICATIONS = [
   { id: 'edema', label: 'Pulmonary edema', on: p => p.edema >= 0.4, set: (a, on) => a.ramp('edema', on ? 0.55 : a.caseCfg.phys.edema, 40) },
   { id: 'atel', label: 'Atelectasis', on: p => p.atel >= 0.6, set: (a, on) => a.ramp('atel', on ? 0.75 : a.caseCfg.phys.atel, 30) },
   { id: 'ph', label: 'Pulmonary hypertension crisis', on: p => p.stim > 0.4 && p.pvReact >= 1.2, set: (a, on) => { const p = a.eng.phys, c = a.caseCfg.phys; if (on) { p.pvReact = 1.4; p.pvrBase = Math.max(1.3, p.pvrBase); p.pfo = true; p.stim = 0.8; p.rvf = Math.min(p.rvf, 0.5); } else { p.pvReact = c.pvReact; p.pvrBase = c.pvrBase; p.pfo = c.pfo; p.stim = 0; p.rvf = c.rvf; } } },
+  { id: 'jet', label: 'Junctional ectopic tachycardia (JET)', on: p => p.rhythm === 'jet', set: (a, on) => { const p = a.eng.phys; p.rhythm = on ? 'jet' : 'sinus'; if (on) p.jetRate = null; } },
+  { id: 'chb', label: 'Complete heart block', on: p => p.rhythm === 'chb', set: (a, on) => { a.eng.phys.rhythm = on ? 'chb' : 'sinus'; } },
+  { id: 'flutter', label: 'Atrial flutter (2:1)', on: p => p.rhythm === 'flutter', set: (a, on) => { a.eng.phys.rhythm = on ? 'flutter' : 'sinus'; } },
   { id: 'tamp', label: 'Cardiac tamponade', on: p => (p.tamp || 0) >= 0.4, set: (a, on) => a.ramp('tamp', on ? 0.75 : 0, on ? 60 : 15) },
   { id: 'hemo', label: 'Hemodynamic instability', on: p => p.reserve <= 0.2 && p.lvf <= 0.5, set: (a, on) => { const p = a.eng.phys, c = a.caseCfg.phys; p.reserve = on ? 0.15 : c.reserve; p.lvf = on ? 0.45 : c.lvf; } },
   { id: 'edi', label: 'Edi catheter displaced', on: p => Math.abs(p.ediPos) >= 3, set: (a, on) => { a.eng.phys.ediPos = on ? -5 : 0; } }
@@ -2785,7 +2879,7 @@ function renderInstructor() {
   $$('#tp-instr input[type=range]').forEach(r => r.oninput = () => { const k = r.dataset.k; e.phys[k] = +r.value; App.ramps = App.ramps.filter(x => x.key !== k); r.nextElementSibling.textContent = fmt(+r.value, PHYS_SLIDERS.find(s => s[0] === k)[5]); e.updateMechanics(); });
   $$('#tp-instr [data-c]').forEach(b => b.onclick = () => { const c = COMPLICATIONS.find(x => x.id === b.dataset.c); const on = b.getAttribute('aria-pressed') !== 'true'; c.set(App, on); App.compOn[c.id] = on; b.setAttribute('aria-pressed', on); App.addFeed((on ? 'Instructor introduced: ' : 'Instructor cleared: ') + c.label, 'ev'); e.updateMechanics(); setTimeout(syncInstructor, 300); });
   $$('#tp-instr [data-o]').forEach(c => c.onchange = () => { App.overlays[c.dataset.o] = c.checked; if (c.dataset.o === 'calcs') renderBedside(); });
-  $('#iClear').onclick = () => { const c = App.caseCfg.phys; ['Cfactor', 'Rfactor', 'leak', 'obstruction', 'edema', 'atel', 'drive', 'sedation', 'reserve', 'lvf', 'rvf', 'pvReact', 'pvrBase', 'pfo'].forEach(k => e.phys[k] = c[k]); Object.assign(e.phys, { disconnected: false, extubated: false, mainstem: false, ptx: 0, stim: 0, ediPos: 0, obstruction: 0, tamp: 0 }); App.ramps = []; App.compOn = {}; e.updateMechanics(); App.addFeed('Instructor cleared all complications', 'ev'); renderInstructor(); };
+  $('#iClear').onclick = () => { const c = App.caseCfg.phys; ['Cfactor', 'Rfactor', 'leak', 'obstruction', 'edema', 'atel', 'drive', 'sedation', 'reserve', 'lvf', 'rvf', 'pvReact', 'pvrBase', 'pfo'].forEach(k => e.phys[k] = c[k]); Object.assign(e.phys, { disconnected: false, extubated: false, mainstem: false, ptx: 0, stim: 0, ediPos: 0, obstruction: 0, tamp: 0, rhythm: 'sinus', jetRate: null }); App.ramps = []; App.compOn = {}; e.updateMechanics(); App.addFeed('Instructor cleared all complications', 'ev'); renderInstructor(); };
   if ($('#iBlind')) $('#iBlind').onclick = () => { App.blind = true; renderInstructor(); App.toast('Instructor panel hidden'); };
   $('#iApply').onclick = () => {
     const pk = $('#iPreset').value, wt = +$('#iWt').value || PRESETS[pk].wt;
