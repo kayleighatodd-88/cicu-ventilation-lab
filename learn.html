@@ -411,6 +411,7 @@ const MODEL_NOTES = [
   'Hemodynamics: lumped steady-state model with time constants. Mean intrathoracic pressure (a compliance-dependent fraction of mean airway pressure plus auto-PEEP) reduces venous return according to hemodynamic reserve, reduces LV afterload when LV function is poor, impedes passive (Glenn/Fontan) pulmonary blood flow, and raises PVR at low and high lung volumes. Intrathoracic pressure includes auto-PEEP averaged over the last four breaths (auto-PEEP is counted only when expiratory flow is still present at the next breath). After a Glenn, high SVC pressure diverts part of SVC flow away from the lungs (a stand-in for decompressing collaterals), so high Pmean lowers SpO2.',
   'PVR responds to alveolar hypoxia, acidosis, hypercapnia, lung volume, stimulation and inhaled nitric oxide, scaled by a reactivity setting. In parallel (shunt-dependent) circulation, hyperoxia and alkalosis lower PVR steeply and Qp:Qs follows the SVR/PVR ratio, so oxygen and hyperventilation cause systemic steal. RV output becomes afterload-limited when PVR exceeds RV capacity.',
   'Acid–base: Henderson–Hasselbalch with acute CO2 buffering (+1 mEq/L HCO3 per 10 mmHg). Lactate rises when oxygen extraction exceeds ≈40% or systemic flow falls below ≈78% of baseline (regional hypoperfusion), and lowers HCO3. Renal compensation is not modelled (cases set baseline HCO3 where chronic compensation applies).',
+  'Bedside waveforms: ECG, arterial, CVP and pleth share one cardiac timing in seconds (PR, ejection time and QT shorten only modestly with heart rate). The arterial notch height and diastolic run-off follow SVR, stroke volume and (in parallel circulation) diastolic run-off into the lungs; the CVP a, c, x, v and y waves follow RV stiffness, functional tricuspid regurgitation (RV failure against high PVR), filling pressure and tamponade; the pleth amplitude follows a relative perfusion index (cardiac output and vasoconstriction), loses its notch and rounds off with poor perfusion, shows the same respiratory variation as the arterial line and a motion artifact when the patient is agitated.',
   'Not modelled: gas compression/circuit compliance, humidity, flow-dependent tube resistance, regional lung mechanics, drug pharmacokinetics, renal compensation, and the proprietary Getinge software behavior.'
 ];
 
@@ -447,7 +448,7 @@ function defaultPhys(presetKey) {
     cardiac: 'biv', pfo: false, fen: 0.12, hb: P.hb, hco3Base: 24,
     obstruction: 0, obstructionType: 'secretions', disconnected: false, extubated: false, mainstem: false, ptx: 0,
     ediCatheter: false, ediPos: 0, stim: 0, ino: false, inotrope: 0, bagging: false,
-    artDamp: 'normal', tr: 0
+    artDamp: 'normal', tr: 0, tamp: 0
   };
 }
 
@@ -1096,6 +1097,9 @@ class Engine {
       CVP = base.CVP0 + 0.3 * Math.max(0, ITP);
     }
     if (p.ptx === 2) CO *= 0.55;
+    // tamponade: pericardial pressure raises atrial (CVP) pressure and limits filling, so output falls
+    const tamp = clamp(p.tamp || 0, 0, 1);
+    if (tamp > 0) { CVP += 11 * tamp; CO *= 1 - 0.5 * tamp; Qp *= 1 - 0.5 * tamp; }
     h.CO = ease(h.CO, CO, dtp, 5);
     g.Qp = ease(g.Qp || Qp, Qp, dtp, 5);
     h.CVP = ease(h.CVP, CVP, dtp, 6);
@@ -1109,7 +1113,8 @@ class Engine {
     let dbpDrop = p.cardiac === 'parallel' ? 5 * clamp(g.qpqs - 1, -0.5, 3) : 0;
     h.SBP = h.MAP + PP * 2 / 3 - dbpDrop / 3; h.DBP = h.MAP - PP / 3 - dbpDrop;
     h.PP = h.SBP - h.DBP;
-    h.ppv = clamp((1 - p.reserve) * 0.3 * clamp((this.PmeanAvg - s_peep(this)) / 8, 0, 1.5), 0, 0.3);
+    h.SVRrel = SVR / base.SVR0; h.SVrel = SV / SV0; // used to shape the arterial and pleth waveforms
+    h.ppv = clamp((1 - p.reserve) * 0.3 * clamp((this.PmeanAvg - s_peep(this)) / 8, 0, 1.5) + 0.25 * tamp, 0, 0.45);
   }
 
   /* ---------- measured values (Servo-u style averaging) ---------- */
@@ -1556,33 +1561,63 @@ function ringIter(t0, t1, cb) { // oldest→newest within window
 const gauss = (x, m, s) => Math.exp(-((x - m) * (x - m)) / (2 * s * s));
 // ECG lead II; QRS component widths are fixed in seconds (not a fraction of the cycle) so the QRS keeps a
 // physiologic duration at any heart rate. T = cycle length in s.
-function ecgShape(ph, T) {
-  T = T || 0.5; const q = 0.007 / T, r = 0.010 / T, s = 0.010 / T;
-  return 0.12 * gauss(ph, 0.16, 0.025) - 0.12 * gauss(ph, 0.30 - 2.2 * q, q) + 1.0 * gauss(ph, 0.30, r) - 0.25 * gauss(ph, 0.30 + 2 * s, s) + 0.28 * gauss(ph, 0.55, 0.045);
+/* ---------- cardiac-cycle waveforms ----------
+   The beat phase places the QRS at 0.30. Every event is timed in SECONDS from the QRS, as in the heart:
+   PR interval, ejection time and QT shorten only modestly with heart rate, so diastole is what shortens in
+   tachycardia. t = time since the QRS (0..T), T = cycle length. Shape parameters (prm) come from the physiology. */
+const QRS_PH = 0.30;
+const g2 = (t, c, w, T) => { let d = t - c; d -= T * Math.round(d / T); return Math.exp(-0.5 * (d / w) * (d / w)); }; // periodic gaussian
+function cardTiming(HR) {
+  const T = 60 / Math.max(30, HR);
+  const ET = clamp(0.40 - 0.0017 * HR, 0.16, 0.33);          // ejection (systolic) time, s
+  return { T, ET, PR: clamp(0.07 + 0.08 * T, 0.08, 0.16), QT: clamp(ET + 0.06, 0.22, 0.42) };
 }
-// Arterial pressure, normalized 0 (end-diastole) to 1 (systolic peak). Cardiac phase: P 0.16, QRS 0.30, T 0.55.
-// Brisk upstroke just after the QRS, rounded systolic peak, decline to the dicrotic notch at end-systole
-// (end of the T wave), small dicrotic wave, then exponential diastolic run-off.
-const ART_UP = 0.36, ART_NOTCH = 0.27, ART_NLEV = 0.56;
-function artShape(ph) {
-  const x = (ph - ART_UP + 1) % 1;
-  if (x < 0.075) { const u = x / 0.075; return Math.pow(Math.sin(u * Math.PI / 2), 1.35); }
-  if (x < ART_NOTCH) { const u = (x - 0.075) / (ART_NOTCH - 0.075); return 1 - (1 - ART_NLEV) * Math.pow(u, 1.7) - 0.03 * Math.sin(u * Math.PI); }
-  const k = 2.6, span = 1 - ART_NOTCH, xd = x - ART_NOTCH;
-  const runoff = ART_NLEV * (Math.exp(-k * xd) - Math.exp(-k * span)) / (1 - Math.exp(-k * span));
-  return Math.max(0, runoff - 0.06 * gauss(x, ART_NOTCH + 0.004, 0.009) + 0.075 * gauss(x, ART_NOTCH + 0.04, 0.022));
+const phOf = (s, T) => ((QRS_PH + s / T) % 1 + 1) % 1;       // seconds after QRS → beat phase
+function ecgShape(t, ct) {
+  const { T, PR, QT } = ct;
+  return 0.12 * g2(t, -PR, 0.022, T) - 0.12 * g2(t, -0.016, 0.007, T) + 1.0 * g2(t, 0, 0.010, T) - 0.25 * g2(t, 0.02, 0.010, T) + 0.28 * g2(t, QT - 0.08, 0.045, T);
+}
+// Arterial pressure, normalized 0 (end-diastole) to 1 (systolic peak): brisk upstroke after the pre-ejection delay,
+// rounded peak with a late-systolic shoulder (reflected wave, larger with high SVR), dicrotic notch at aortic
+// valve closure (end of ejection), small dicrotic wave, then diastolic run-off whose time constant is set by
+// SVR (and shortened by a diastolic run-off into the lungs in shunt-dependent circulation).
+function artShape(t, ct, prm) {
+  const { T, ET } = ct, x = ((t - 0.05) % T + T) % T, up = prm.up, n = prm.notch;
+  if (x < up) { const u = x / up; return Math.pow(Math.sin(u * Math.PI / 2), 1.35); }
+  if (x < ET) { const u = (x - up) / (ET - up); return 1 - (1 - n) * Math.pow(u, 1.6) - 0.03 * Math.sin(u * Math.PI) + prm.refl * 0.6 * Math.exp(-0.5 * ((u - 0.5) / 0.18) ** 2); }
+  const span = Math.max(0.02, T - ET), xd = x - ET, k = 1 / prm.tau;
+  const runoff = n * (Math.exp(-k * xd) - Math.exp(-k * span)) / (1 - Math.exp(-k * span));
+  return Math.max(0, runoff - prm.dip * Math.exp(-0.5 * (xd / 0.008) ** 2) + prm.dic * Math.exp(-0.5 * ((xd - 0.035) / 0.018) ** 2));
 }
 // Underdamped line: ringing after the upstroke (overshoots systole, undershoots the notch)
-function artRing(ph) { const x = (ph - ART_UP + 1) % 1 - 0.06; return x > 0 ? 0.26 * Math.exp(-x / 0.07) * Math.sin(2 * Math.PI * x / 0.085) : 0; }
-// Central venous / right atrial pressure (mmHg about the mean): a wave after the P wave, c wave at the QRS,
-// x descent, v wave at the end of the T wave, y descent. Tricuspid regurgitation merges c and v into a tall cv wave.
-function cvpShape(ph, tr) {
-  tr = tr || 0;
-  return 2.2 * gauss(ph, 0.23, 0.035) + 1.1 * (1 - tr) * gauss(ph, 0.33, 0.018) - 1.6 * (1 - 0.9 * tr) * gauss(ph, 0.43, 0.04)
-    + (1.8 + 6 * tr) * gauss(ph, 0.63 - 0.06 * tr, 0.05 + 0.05 * tr) - (1.3 + 1.5 * tr) * gauss(ph, 0.77, 0.045) - 0.35;
+function artRing(t, ct, prm) { const x = ((t - 0.05) % ct.T + ct.T) % ct.T - prm.up * 0.85; return x > 0 ? 0.26 * Math.exp(-x / 0.035) * Math.sin(2 * Math.PI * x / 0.045) : 0; }
+// Central venous / right atrial pressure (mmHg about the mean): a wave just after the P wave (atrial contraction),
+// c wave just after the QRS (tricuspid closure), x descent during ejection, v wave at end-systole (atrial filling
+// against a closed valve), y descent when the tricuspid valve opens. prm sets each amplitude from the physiology.
+function cvpShape(t, ct, prm) {
+  const { T, ET, PR } = ct, tr = prm.tr;
+  return prm.a * g2(t, -PR + 0.08, 0.035, T) + prm.c * g2(t, 0.045, 0.013, T) - prm.x * g2(t, ET * 0.7, 0.045, T)
+    + prm.v * g2(t, ET + 0.04 - 0.08 * tr, 0.045 + 0.06 * tr, T) - prm.y * g2(t, ET + 0.14, 0.045, T)
+    + prm.dia * g2(t, ET + 0.19, 0.12, T) - prm.off; // dia: pressure held up through diastole (tamponade: no y descent)
 }
-const CVP_MARKS = [['a', 0.23], ['c', 0.33], ['x', 0.43], ['v', 0.63], ['y', 0.77]];
-function plethShape(ph) { let x = (ph - 0.42 + 1) % 1; if (x < 0.16) return Math.sin(x / 0.16 * Math.PI / 2); const y = (x - 0.16) / 0.84; return 0.15 + 0.85 * Math.exp(-y * 2.4) + 0.06 * gauss(y, 0.3, 0.05); }
+// mean of cvpShape over a beat (so the trace is centred on the numeric CVP)
+function cvpMean(ct, prm) {
+  const tr = prm.tr, s = Math.sqrt(2 * Math.PI) / ct.T;
+  return s * (prm.a * 0.035 + prm.c * 0.013 - prm.x * 0.045 + prm.v * (0.045 + 0.06 * tr) - prm.y * 0.045 + prm.dia * 0.12);
+}
+// Pulse oximeter plethysmogram, normalized: arrives later than the arterial line (peripheral transit), slower
+// upstroke, rounded peak, dicrotic notch on the downslope when perfusion is good, smooth decay. With poor
+// perfusion it becomes small, rounded and loses the notch.
+function plethShape(t, ct, prm) {
+  const { T, ET } = ct, x = ((t - prm.delay) % T + T) % T, up = Math.min(0.09, 0.3 * T);
+  let v;
+  if (x < up) v = 0.5 - 0.5 * Math.cos(Math.PI * x / up);
+  else { const tau = 0.22 + 0.25 * prm.tone, decay = (s) => (Math.exp(-s / tau) - Math.exp(-(T - up) / tau)) / (1 - Math.exp(-(T - up) / tau)); v = decay(x - up); v += prm.notch * (-0.6 * Math.exp(-0.5 * ((x - ET - 0.03) / 0.012) ** 2) + Math.exp(-0.5 * ((x - ET - 0.06) / 0.025) ** 2)); }
+  // poor perfusion: rounded, sinusoidal pulse
+  const smooth = 0.5 - 0.5 * Math.cos(2 * Math.PI * (x / T - 0.02));
+  return Math.max(0, (1 - prm.round) * v + prm.round * smooth);
+}
+let CVP_MARKS = [['a', 0.23], ['c', 0.33], ['x', 0.43], ['v', 0.63], ['y', 0.77]], ART_NOTCH_PH = 0.63;
 
 function kindCode() {
   const e = App.eng;
@@ -1597,25 +1632,51 @@ function pushSample() {
   const bag = p.bagging;
   ring.p[i] = bag ? 0 : e.Paw; ring.f[i] = bag ? 0 : e.Qmeas * 0.06; ring.v[i] = bag ? 0 : e.dispVol; ring.e[i] = e.EdiMeas; ring.pm[i] = e.Pmus; ring.k[i] = kindCode();
   // heart
-  const dph = 0.01 * h.HR / 60, Tc = 60 / h.HR;
+  const dph = 0.01 * h.HR / 60, ct = cardTiming(h.HR);
   App.beat = (App.beat + dph) % 1;
-  const ph = App.beat;
+  const ph = App.beat, tq = ((ph - QRS_PH + 1) % 1) * ct.T; // seconds since the QRS
+  const passive = p.cardiac === 'glenn' || p.cardiac === 'fontan', tamp = clamp(p.tamp || 0, 0, 1);
+  const SVRrel = h.SVRrel || 1, SVrel = h.SVrel || 1, COrel = h.CO / e.base.CO0, steal = p.cardiac === 'parallel' ? Math.max(0, g.qpqs - 1) : 0;
+  // --- shape parameters from the physiology
+  const artP = {
+    up: clamp(0.045 + 0.035 * (1 - p.lvf) + 0.02 * Math.max(0, 0.7 - SVrel), 0.04, 0.1),        // slower upstroke with poor contractility / low SV
+    notch: clamp(0.56 + 0.2 * (SVRrel - 1) - 0.12 * steal - 0.25 * Math.max(0, 0.8 - SVrel), 0.25, 0.8), // high SVR: high notch; vasodilation, run-off or low SV: low notch
+    refl: clamp(0.18 * (SVRrel - 0.95), 0, 0.12),                                                  // late-systolic shoulder from wave reflection
+    tau: clamp(0.38 * SVRrel / (1 + 0.45 * steal), 0.1, 0.9)                                      // diastolic decay time constant, s
+  };
+  artP.dip = 0.05 * (artP.notch / 0.56); artP.dic = 0.07 * (artP.notch / 0.56) * clamp(SVrel, 0.4, 1);
+  const rvStiff = clamp((1 - p.rvf) / 0.6, 0, 1), pvrHi = clamp(((h.PVRf || 1) - 1) / 2, 0, 1);
+  const trE = passive ? 0 : clamp((p.tr || 0) + 0.3 * pvrHi * rvStiff, 0, 1);                   // RV failure against high PVR → functional TR
+  // a tallest (larger with a stiff RV), c a small notch on its downslope, deep x, moderate v, shallower y
+  const cvP = { tr: trE, a: passive ? 0.6 : 2.4 * (1 + 0.8 * rvStiff + 0.5 * tamp), c: passive ? 0 : 0.9 * (1 - trE), x: 2.0 * (1 - 0.9 * trE) * (1 + 0.2 * tamp),
+    v: 1.6 * (1 + 0.3 * rvStiff + 0.5 * tamp) + 6 * trE, y: (1.1 + 1.5 * trE) * (1 - 0.95 * tamp), dia: 1.4 * tamp };
+  cvP.off = 0; cvP.off = cvpMean(ct, cvP);
+  const perf = clamp(Math.pow(Math.max(COrel, 0.05), 1.2) / Math.pow(SVRrel, 0.8), 0.03, 1.4);   // perfusion index (relative)
+  const plP = { delay: 0.17, tone: clamp(SVRrel - 0.8, 0, 1), notch: 0.09 * clamp((perf - 0.35) / 0.4, 0, 1), round: clamp((0.45 - perf) / 0.35, 0, 1) };
+  // teaching-label positions follow the timing
+  CVP_MARKS = [['a', phOf(-ct.PR + 0.08, ct.T)], ['c', phOf(0.035, ct.T)], ['x', phOf(ct.ET * 0.65, ct.T)], ['v', phOf(ct.ET + 0.04 - 0.08 * trE, ct.T)], ['y', phOf(ct.ET + 0.15, ct.T)]];
+  ART_NOTCH_PH = phOf(0.05 + ct.ET, ct.T);
   // each 10 ms sample looks at 5 points inside its interval so narrow features (R wave, c wave) are not
   // aliased: the ECG keeps the extreme value (constant QRS height), the CVP keeps the average
-  let ecgV = 0, cvpS = 0; const trCv = p.cardiac === 'glenn' || p.cardiac === 'fontan' ? 0 : p.tr;
-  for (let k = 0; k < 5; k++) { const pk = (ph - dph * k / 5 + 1) % 1, v = ecgShape(pk, Tc); if (Math.abs(v) > Math.abs(ecgV)) ecgV = v; cvpS += cvpShape(pk, trCv) / 5; }
+  let ecgV = 0, cvpS = 0;
+  for (let k = 0; k < 5; k++) { const tk = tq - 0.002 * k, v = ecgShape(tk, ct); if (Math.abs(v) > Math.abs(ecgV)) ecgV = v; cvpS += cvpShape(tk, ct, cvP) / 5; }
   ring.ecg[i] = ecgV;
   const lastB = e.breaths.length ? e.breaths[e.breaths.length - 1] : null;
   const pip = lastB ? lastB.Pmax : e.set.peep + 10, peep = p.bagging ? 5 : e.set.peep;
-  // intrathoracic pressure reaches the vessels smoothly (vascular compliance), not as square airway-pressure steps
+  // intrathoracic pressure reaches the vessels smoothly (vascular compliance), not as square airway-pressure steps;
+  // spontaneous inspiration (patient effort) lowers intrathoracic pressure
   const pawRaw = clamp((e.Paw - peep) / Math.max(2, pip - peep), 0, 1.2);
   App.pawLP = App.pawLP == null ? pawRaw : App.pawLP + (pawRaw - App.pawLP) * (1 - Math.exp(-0.01 / 0.28));
-  const pawN = App.pawLP;
-  const sbp = h.SBP - (h.ppv || 0) * (h.SBP - h.DBP) * pawN * 1.6;
+  App.pmLP = App.pmLP == null ? e.Pmus : App.pmLP + (e.Pmus - App.pmLP) * (1 - Math.exp(-0.01 / 0.15));
+  const pawN = App.pawLP, pmN = clamp(App.pmLP / 6, 0, 1.5);
+  // pulse pressure variation with positive-pressure breaths (preload-dependent), plus pulsus paradoxus in tamponade
+  // (systolic pressure falls during spontaneous inspiration)
+  const ppDrop = clamp((h.ppv || 0) * 1.6 * pawN + tamp * 0.3 * pmN, 0, 0.75);
+  const sbp = h.SBP - ppDrop * (h.SBP - h.DBP);
   ring.ph[i] = ph;
   // arterial line: damping changes what the transducer shows, not the true pressure
-  let an = artShape(ph);
-  if (p.artDamp === 'under') an += artRing(ph);
+  let an = artShape(tq, ct, artP);
+  if (p.artDamp === 'under') an += artRing(tq, ct, artP);
   if (p.artDamp === 'over') { App.artLP = App.artLP == null ? an : App.artLP + (an - App.artLP) * (1 - Math.exp(-0.01 / 0.07)); an = App.artLP; } else App.artLP = an;
   let art = h.DBP + (sbp - h.DBP) * an;
   // fast-flush (square wave) test: ~0.4 s at flush pressure, then the release shows the damping
@@ -1627,11 +1688,23 @@ function pushSample() {
   }
   ring.art[i] = art;
   // CVP: a/c/x/v/y components, smaller in passive cavopulmonary circuits (no atrial kick in the SVC/Fontan tracing)
-  const cvK = clamp(0.8 + 0.04 * (h.CVP - 6), 0.7, 1.6) * (p.cardiac === 'glenn' || p.cardiac === 'fontan' ? 0.35 : 1);
-  // respiratory variation: a smooth rise of ~1–3 mmHg with each positive-pressure breath (scaled to its size)
-  ring.cvp[i] = h.CVP + cvK * cvpS + 0.12 * pawN * Math.max(2, pip - peep);
-  const amp = clamp(h.CO / e.base.CO0, 0.15, 1.3) * (g.SaO2 > 0.3 ? 1 : 0.3);
-  ring.pl[i] = 0.12 + 0.8 * amp * plethShape(ph);
+  // waves scale with the filling pressure (small and flat when hypovolemic)
+  const cvK = clamp(0.55 + 0.06 * (h.CVP - 4), 0.45, 1.6);
+  // respiratory variation: smooth rise with each positive-pressure breath (scaled to its size), fall with spontaneous inspiration
+  ring.cvp[i] = h.CVP + cvK * cvpS * (passive ? 0.35 : 1) + 0.12 * pawN * Math.max(2, pip - peep) - 0.3 * App.pmLP; // Glenn/Fontan: little pulsatility, no atrial kick
+  // pleth: amplitude follows the perfusion index and the same respiratory variation; poor signal when SaO2 is very low
+  const amp = 0.85 * perf * (g.SaO2 > 0.3 ? 1 : 0.3) * (1 - 1.1 * ppDrop);
+  let pl = 0.08 + amp * plethShape(tq, ct, plP);
+  // motion artifact when the patient is agitated and moving (not when paralysed or deeply sedated)
+  const mot = p.drive > 0.05 && p.sedation < 0.9 ? clamp((p.stim - 0.25) / 0.6, 0, 1) : 0;
+  if (mot > 0) {
+    App.motN = (App.motN || 0) * 0.93 + (Math.random() - 0.5) * 0.3;
+    if (!(App.motB > 0) && Math.random() < 0.006) App.motB = 0.4 + Math.random() * 0.8;
+    App.motPh = (App.motPh || 0) + 0.01 * 2 * Math.PI * (1.6 + Math.random() * 2.4);
+    pl += mot * (0.35 * App.motN + (App.motB > 0 ? 0.55 * Math.sin(App.motPh) : 0));
+    if (App.motB > 0) App.motB -= 0.01;
+  }
+  ring.pl[i] = pl;
   ring.co2[i] = e.co2Wave;
   ring.idx = (i + 1) % RN; if (ring.n < RN) ring.n++;
 }
@@ -1665,7 +1738,7 @@ App.loadCase = function (cfg, opts) {
   renderAllStatic();
 };
 
-App.ramp = function (key, target, seconds) { const from = this.eng.phys[key]; this.ramps = this.ramps.filter(r => r.key !== key); this.ramps.push({ key, from, target, t0: this.eng.t, dur: Math.max(0.1, seconds) }); };
+App.ramp = function (key, target, seconds) { const from = this.eng.phys[key] || 0; this.ramps = this.ramps.filter(r => r.key !== key); this.ramps.push({ key, from, target, t0: this.eng.t, dur: Math.max(0.1, seconds) }); };
 function processRamps() {
   const e = App.eng;
   App.ramps = App.ramps.filter(r => { const f = clamp((e.t - r.t0) / r.dur, 0, 1); e.phys[r.key] = r.from + (r.target - r.from) * f; return f < 1; });
@@ -2230,7 +2303,7 @@ function drawMonitor() {
     x.stroke();
     // teaching labels: CVP a, c, x, v, y and the arterial dicrotic notch, placed by cardiac phase
     if (marks && (k === 'cvp' || k === 'art')) {
-      const pts = k === 'cvp' ? CVP_MARKS : [['notch', (ART_UP + ART_NOTCH + 0.004) % 1]];
+      const pts = k === 'cvp' ? CVP_MARKS : [['notch', ART_NOTCH_PH]];
       x.fillStyle = '#FFFFFF'; x.font = `600 ${10.5 * d}px 'Barlow Semi Condensed', sans-serif`; x.textAlign = 'center';
       // label only the two most recent beats so the letters stay readable at infant heart rates
       let prev = null; const hits = [];
@@ -2379,7 +2452,8 @@ function assessText(e) {
   const wob = e.driveEff < 0.12 ? 'no spontaneous respiratory effort' : e.wob > 5 ? 'marked retractions, nasal flaring and tachypnea' : e.wob > 2.5 ? 'mild subcostal retractions' : 'comfortable, breathing in synchrony';
   const perf = coRel < 0.6 ? 'cool, mottled extremities, capillary refill 4–5 s' : coRel < 0.82 ? 'cool hands and feet, capillary refill about 3 s' : 'warm, capillary refill under 2 s';
   const neuro = p.stim > 0.3 ? 'Agitated and straining.' : p.sedation > 0.8 ? 'Deeply sedated.' : p.sedation < 0.2 ? 'Awake, intermittently fussy.' : 'Sedated, rousable.';
-  return `${col}; ${wob}. Perfusion: ${perf}. ${neuro} ${chestText(e)}${p.bagging ? ' Being hand-ventilated.' : ''}`;
+  const tampTx = (p.tamp || 0) > 0.3 ? ' Heart sounds muffled; pulse pressure narrow and falling further with each inspiration; neck veins full; chest tube output has abruptly decreased.' : '';
+  return `${col}; ${wob}. Perfusion: ${perf}. ${neuro} ${chestText(e)}${tampTx}${p.bagging ? ' Being hand-ventilated.' : ''}`;
 }
 function capnoText(e, interp) {
   const g = e.g, p = e.phys; let shape;
@@ -2667,6 +2741,7 @@ const COMPLICATIONS = [
   { id: 'edema', label: 'Pulmonary edema', on: p => p.edema >= 0.4, set: (a, on) => a.ramp('edema', on ? 0.55 : a.caseCfg.phys.edema, 40) },
   { id: 'atel', label: 'Atelectasis', on: p => p.atel >= 0.6, set: (a, on) => a.ramp('atel', on ? 0.75 : a.caseCfg.phys.atel, 30) },
   { id: 'ph', label: 'Pulmonary hypertension crisis', on: p => p.stim > 0.4 && p.pvReact >= 1.2, set: (a, on) => { const p = a.eng.phys, c = a.caseCfg.phys; if (on) { p.pvReact = 1.4; p.pvrBase = Math.max(1.3, p.pvrBase); p.pfo = true; p.stim = 0.8; p.rvf = Math.min(p.rvf, 0.5); } else { p.pvReact = c.pvReact; p.pvrBase = c.pvrBase; p.pfo = c.pfo; p.stim = 0; p.rvf = c.rvf; } } },
+  { id: 'tamp', label: 'Cardiac tamponade', on: p => (p.tamp || 0) >= 0.4, set: (a, on) => a.ramp('tamp', on ? 0.75 : 0, on ? 60 : 15) },
   { id: 'hemo', label: 'Hemodynamic instability', on: p => p.reserve <= 0.2 && p.lvf <= 0.5, set: (a, on) => { const p = a.eng.phys, c = a.caseCfg.phys; p.reserve = on ? 0.15 : c.reserve; p.lvf = on ? 0.45 : c.lvf; } },
   { id: 'edi', label: 'Edi catheter displaced', on: p => Math.abs(p.ediPos) >= 3, set: (a, on) => { a.eng.phys.ediPos = on ? -5 : 0; } }
 ];
@@ -2710,7 +2785,7 @@ function renderInstructor() {
   $$('#tp-instr input[type=range]').forEach(r => r.oninput = () => { const k = r.dataset.k; e.phys[k] = +r.value; App.ramps = App.ramps.filter(x => x.key !== k); r.nextElementSibling.textContent = fmt(+r.value, PHYS_SLIDERS.find(s => s[0] === k)[5]); e.updateMechanics(); });
   $$('#tp-instr [data-c]').forEach(b => b.onclick = () => { const c = COMPLICATIONS.find(x => x.id === b.dataset.c); const on = b.getAttribute('aria-pressed') !== 'true'; c.set(App, on); App.compOn[c.id] = on; b.setAttribute('aria-pressed', on); App.addFeed((on ? 'Instructor introduced: ' : 'Instructor cleared: ') + c.label, 'ev'); e.updateMechanics(); setTimeout(syncInstructor, 300); });
   $$('#tp-instr [data-o]').forEach(c => c.onchange = () => { App.overlays[c.dataset.o] = c.checked; if (c.dataset.o === 'calcs') renderBedside(); });
-  $('#iClear').onclick = () => { const c = App.caseCfg.phys; ['Cfactor', 'Rfactor', 'leak', 'obstruction', 'edema', 'atel', 'drive', 'sedation', 'reserve', 'lvf', 'rvf', 'pvReact', 'pvrBase', 'pfo'].forEach(k => e.phys[k] = c[k]); Object.assign(e.phys, { disconnected: false, extubated: false, mainstem: false, ptx: 0, stim: 0, ediPos: 0, obstruction: 0 }); App.ramps = []; App.compOn = {}; e.updateMechanics(); App.addFeed('Instructor cleared all complications', 'ev'); renderInstructor(); };
+  $('#iClear').onclick = () => { const c = App.caseCfg.phys; ['Cfactor', 'Rfactor', 'leak', 'obstruction', 'edema', 'atel', 'drive', 'sedation', 'reserve', 'lvf', 'rvf', 'pvReact', 'pvrBase', 'pfo'].forEach(k => e.phys[k] = c[k]); Object.assign(e.phys, { disconnected: false, extubated: false, mainstem: false, ptx: 0, stim: 0, ediPos: 0, obstruction: 0, tamp: 0 }); App.ramps = []; App.compOn = {}; e.updateMechanics(); App.addFeed('Instructor cleared all complications', 'ev'); renderInstructor(); };
   if ($('#iBlind')) $('#iBlind').onclick = () => { App.blind = true; renderInstructor(); App.toast('Instructor panel hidden'); };
   $('#iApply').onclick = () => {
     const pk = $('#iPreset').value, wt = +$('#iWt').value || PRESETS[pk].wt;
