@@ -72,6 +72,8 @@ button{ cursor:pointer; }
 .col-l, .col-r{ display:flex; flex-direction:column; gap:12px; min-width:0; min-height:0; }
 .ptcard{ margin:0; flex:none; }
 .ptcard h3{ font-size:16px; }
+.pthead{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.pthead h3{ margin:0 0 6px; }
 body.vent-full .col-r, body.vent-full .clin{ display:none; }
 body.vent-full .bench{ grid-template-columns:1fr; }
 @media (max-width: 1150px){ .bench{ grid-template-columns:1fr; } }
@@ -145,8 +147,8 @@ body.vent-full .vscreen{ height:calc(100vh - 170px); }
 
 /* ---------- bedside monitor ---------- */
 .mon-housing{ background:var(--mon); border-radius:16px; padding:10px; border:1px solid #1A1F23; box-shadow:0 10px 22px rgba(20,30,40,.25); }
-.mscreen{ background:#000; border-radius:6px; display:grid; grid-template-columns:minmax(0,1fr) 168px; height:clamp(300px, 34vh, 400px); overflow:hidden; font-family:var(--cond); color:#fff; position:relative; }
-.mscreen canvas{ width:100%; height:100%; display:block; }
+.mscreen{ background:#000; border-radius:6px; display:grid; grid-template-columns:minmax(0,1fr) 168px; grid-template-rows:minmax(0,1fr); height:clamp(300px, 34vh, 400px); overflow:hidden; font-family:var(--cond); color:#fff; position:relative; }
+.mscreen canvas{ width:100%; height:100%; min-height:0; display:block; }
 .mnums{ display:grid; grid-template-rows:repeat(5,1fr); border-left:1px solid #1D2328; }
 .mn{ padding:3px 8px; border-bottom:1px solid #1D2328; display:flex; flex-direction:column; justify-content:center; line-height:1; position:relative; }
 .mn .h{ font-size:12px; display:flex; justify-content:space-between; opacity:.85; }
@@ -221,10 +223,15 @@ table.mini th, table.mini td{ border:1px solid var(--line); padding:4px 6px; tex
 .lesson p{ margin:6px 0; }
 
 /* ---------- dock ---------- */
-.dock{ position:sticky; bottom:0; display:flex; gap:12px; align-items:center; padding:6px 14px calc(9px + env(safe-area-inset-bottom,0px)); background:var(--room2); border-top:3px solid var(--charcoal); flex-wrap:wrap; z-index:5; }
-.dock .lbl{ flex-direction:row; align-items:center; gap:5px; }
-.dock .status{ flex:1; font-size:13.5px; color:var(--ink2); min-width:180px; }
-.dock .timer{ color:var(--ink); font-family:var(--cond); font-size:20px; font-weight:600; font-variant-numeric:tabular-nums; }
+.dock{ position:sticky; bottom:0; display:flex; gap:12px; align-items:center; padding:10px 16px calc(11px + env(safe-area-inset-bottom,0px)); background:var(--charcoal); color:#fff; border-top:5px solid var(--accent); box-shadow:0 -6px 18px rgba(20,30,40,.28); flex-wrap:wrap; z-index:5; }
+.dock .lbl{ flex-direction:row; align-items:center; gap:7px; color:#fff; font-size:14px; font-weight:700; letter-spacing:.02em; }
+.dock .sel{ background:#fff; color:var(--charcoal); border-color:#fff; font-size:15px; font-weight:600; padding:7px 10px; }
+.dock .btn{ background:transparent; color:#fff; border-color:rgba(255,255,255,.55); font-size:15px; }
+.dock .btn:hover{ border-color:#fff; }
+.dock #btnLoadScn, .dock .btn.primary{ background:var(--accent); border-color:var(--accent); color:#fff; font-weight:700; }
+.dock .status{ flex:1; font-size:15px; font-weight:600; color:#fff; min-width:180px; }
+.dock .timer{ color:#fff; background:rgba(255,255,255,.1); border-radius:8px; padding:2px 12px; font-family:var(--cond); font-size:28px; font-weight:700; font-variant-numeric:tabular-nums; }
+.dock :focus-visible{ outline-color:#fff; }
 
 /* ---------- modals ---------- */
 .modal-back{ position:fixed; inset:0; background:rgba(10,20,28,.55); display:flex; align-items:center; justify-content:center; z-index:50; padding:16px; }
@@ -439,7 +446,8 @@ function defaultPhys(presetKey) {
     metab: 1, reserve: 0.6, lvf: 0.9, rvf: 0.9, pvrBase: 1, pvReact: 0.3, svrFactor: 1,
     cardiac: 'biv', pfo: false, fen: 0.12, hb: P.hb, hco3Base: 24,
     obstruction: 0, obstructionType: 'secretions', disconnected: false, extubated: false, mainstem: false, ptx: 0,
-    ediCatheter: false, ediPos: 0, stim: 0, ino: false, inotrope: 0, bagging: false
+    ediCatheter: false, ediPos: 0, stim: 0, ino: false, inotrope: 0, bagging: false,
+    artDamp: 'normal', tr: 0
   };
 }
 
@@ -1536,7 +1544,7 @@ App.caseT = () => App.eng.t - App.caseStartBT;
 /* ---------- ring buffers (100 Hz, breath-time) ---------- */
 const RN = 100 * 80;
 const ring = { t: new Float64Array(RN), p: new Float32Array(RN), f: new Float32Array(RN), v: new Float32Array(RN), e: new Float32Array(RN), pm: new Float32Array(RN), k: new Int8Array(RN),
-  ecg: new Float32Array(RN), art: new Float32Array(RN), cvp: new Float32Array(RN), pl: new Float32Array(RN), co2: new Float32Array(RN), idx: 0, n: 0 };
+  ecg: new Float32Array(RN), art: new Float32Array(RN), cvp: new Float32Array(RN), pl: new Float32Array(RN), co2: new Float32Array(RN), ph: new Float32Array(RN), idx: 0, n: 0 };
 function ringReset() { ring.idx = 0; ring.n = 0; }
 function ringIter(t0, t1, cb) { // oldest→newest within window
   const n = ring.n; if (!n) return;
@@ -1547,8 +1555,28 @@ function ringIter(t0, t1, cb) { // oldest→newest within window
 /* ---------- physiologic waveform shapes ---------- */
 const gauss = (x, m, s) => Math.exp(-((x - m) * (x - m)) / (2 * s * s));
 function ecgShape(ph) { return 0.12 * gauss(ph, 0.16, 0.025) - 0.12 * gauss(ph, 0.285, 0.008) + 1.0 * gauss(ph, 0.30, 0.009) - 0.25 * gauss(ph, 0.318, 0.01) + 0.28 * gauss(ph, 0.55, 0.045); }
-function artShape(ph) { let x = (ph - 0.33 + 1) % 1; if (x < 0.1) return Math.sin(x / 0.1 * Math.PI / 2); const y = (x - 0.1) / 0.9; return Math.max(0, (0.72 * Math.exp(-y * 2.2) + 0.26) * (1 - 0.0) + 0.09 * gauss(y, 0.24, 0.04) - 0.26 * y * 0.3) ; }
-function cvpShape(ph) { return 0.8 * gauss(ph, 0.2, 0.04) + 0.4 * gauss(ph, 0.36, 0.03) + 0.7 * gauss(ph, 0.72, 0.06); }
+// Arterial pressure, normalized 0 (end-diastole) to 1 (systolic peak). Cardiac phase: P 0.16, QRS 0.30, T 0.55.
+// Brisk upstroke just after the QRS, rounded systolic peak, decline to the dicrotic notch at end-systole
+// (end of the T wave), small dicrotic wave, then exponential diastolic run-off.
+const ART_UP = 0.36, ART_NOTCH = 0.27, ART_NLEV = 0.56;
+function artShape(ph) {
+  const x = (ph - ART_UP + 1) % 1;
+  if (x < 0.075) { const u = x / 0.075; return Math.pow(Math.sin(u * Math.PI / 2), 1.35); }
+  if (x < ART_NOTCH) { const u = (x - 0.075) / (ART_NOTCH - 0.075); return 1 - (1 - ART_NLEV) * Math.pow(u, 1.7) - 0.03 * Math.sin(u * Math.PI); }
+  const k = 2.6, span = 1 - ART_NOTCH, xd = x - ART_NOTCH;
+  const runoff = ART_NLEV * (Math.exp(-k * xd) - Math.exp(-k * span)) / (1 - Math.exp(-k * span));
+  return Math.max(0, runoff - 0.06 * gauss(x, ART_NOTCH + 0.004, 0.009) + 0.075 * gauss(x, ART_NOTCH + 0.04, 0.022));
+}
+// Underdamped line: ringing after the upstroke (overshoots systole, undershoots the notch)
+function artRing(ph) { const x = (ph - ART_UP + 1) % 1 - 0.06; return x > 0 ? 0.26 * Math.exp(-x / 0.07) * Math.sin(2 * Math.PI * x / 0.085) : 0; }
+// Central venous / right atrial pressure (mmHg about the mean): a wave after the P wave, c wave at the QRS,
+// x descent, v wave at the end of the T wave, y descent. Tricuspid regurgitation merges c and v into a tall cv wave.
+function cvpShape(ph, tr) {
+  tr = tr || 0;
+  return 2.2 * gauss(ph, 0.23, 0.035) + 1.1 * (1 - tr) * gauss(ph, 0.33, 0.018) - 1.6 * (1 - 0.9 * tr) * gauss(ph, 0.43, 0.04)
+    + (1.8 + 6 * tr) * gauss(ph, 0.63 - 0.06 * tr, 0.05 + 0.05 * tr) - (1.3 + 1.5 * tr) * gauss(ph, 0.77, 0.045) - 0.35;
+}
+const CVP_MARKS = [['a', 0.23], ['c', 0.33], ['x', 0.43], ['v', 0.63], ['y', 0.77]];
 function plethShape(ph) { let x = (ph - 0.42 + 1) % 1; if (x < 0.16) return Math.sin(x / 0.16 * Math.PI / 2); const y = (x - 0.16) / 0.84; return 0.15 + 0.85 * Math.exp(-y * 2.4) + 0.06 * gauss(y, 0.3, 0.05); }
 
 function kindCode() {
@@ -1571,8 +1599,23 @@ function pushSample() {
   const pip = lastB ? lastB.Pmax : e.set.peep + 10, peep = p.bagging ? 5 : e.set.peep;
   const pawN = clamp((e.Paw - peep) / Math.max(2, pip - peep), 0, 1.2);
   const sbp = h.SBP - (h.ppv || 0) * (h.SBP - h.DBP) * pawN * 1.6;
-  ring.art[i] = h.DBP + (sbp - h.DBP) * artShape(ph);
-  ring.cvp[i] = h.CVP - 1.4 + 2.6 * cvpShape(ph) + 0.25 * (e.Paw - peep);
+  ring.ph[i] = ph;
+  // arterial line: damping changes what the transducer shows, not the true pressure
+  let an = artShape(ph);
+  if (p.artDamp === 'under') an += artRing(ph);
+  if (p.artDamp === 'over') { App.artLP = App.artLP == null ? an : App.artLP + (an - App.artLP) * (1 - Math.exp(-0.01 / 0.07)); an = App.artLP; } else App.artLP = an;
+  let art = h.DBP + (sbp - h.DBP) * an;
+  // fast-flush (square wave) test: ~0.4 s at flush pressure, then the release shows the damping
+  if (App.flushT != null) {
+    const ft = e.t - App.flushT, hi = h.DBP + 2.4 * (h.SBP - h.DBP) + 25;
+    if (ft < 0.4) art = hi;
+    else if (ft < 1.2) { const r = ft - 0.4, dz = hi - art; art += p.artDamp === 'over' ? dz * Math.exp(-r / 0.13) : dz * Math.exp(-r / (p.artDamp === 'under' ? 0.11 : 0.022)) * Math.cos(2 * Math.PI * r / 0.06); }
+    else App.flushT = null;
+  }
+  ring.art[i] = art;
+  // CVP: a/c/x/v/y components, smaller in passive cavopulmonary circuits (no atrial kick in the SVC/Fontan tracing)
+  const cvK = clamp(0.8 + 0.04 * (h.CVP - 6), 0.7, 1.6) * (p.cardiac === 'glenn' || p.cardiac === 'fontan' ? 0.35 : 1);
+  ring.cvp[i] = h.CVP + cvK * cvpShape(ph, p.cardiac === 'glenn' || p.cardiac === 'fontan' ? 0 : p.tr) + 0.25 * (e.Paw - peep);
   const amp = clamp(h.CO / e.base.CO0, 0.15, 1.3) * (g.SaO2 > 0.3 ? 1 : 0.3);
   ring.pl[i] = 0.12 + 0.8 * amp * plethShape(ph);
   ring.co2[i] = e.co2Wave;
@@ -2151,17 +2194,37 @@ function drawMonitor() {
   x.fillStyle = '#000'; x.fillRect(0, 0, w, h);
   const e = App.eng; if (!e.phys) return;
   const map0 = e.base.MAP0;
-  const chs = [['ecg', '#33E06A', -0.4, 1.25, 'II'], ['art', '#FF5B5B', 0, Math.ceil(map0 * 2.1 / 10) * 10, 'ART'], ['cvp', '#6CB8FF', 0, 30, 'CVP'], ['pl', '#36E0E0', 0, 1.1, 'Pleth'], ['co2', '#F2F2A0', 0, 60, 'CO₂']];
-  const win = 6, chH = h / chs.length, t1 = e.t, t0 = t1 - win, gap = 0.25;
+  // scales follow the patient (as a nurse would set them) so the waveform morphology fills the channel
+  const cvMx = niceMax(e.h.CVP + 9, [10, 15, 20, 25, 30, 40]);
+  const artMx = niceMax(Math.max(e.h.SBP, map0 * 1.4) * 1.25, [60, 80, 100, 120, 140, 160, 200]);
+  const chs = [['ecg', '#33E06A', -0.4, 1.25, 'II'], ['art', '#FF5B5B', 0, artMx, 'ART'], ['cvp', '#6CB8FF', 0, cvMx, 'CVP'], ['pl', '#36E0E0', 0, 1.1, 'Pleth'], ['co2', '#F2F2A0', 0, 60, 'CO₂']];
+  const win = 4, chH = h / chs.length, t1 = e.t, t0 = t1 - win, gap = 0.2;
   const xOf = (t) => ((t % win) + win) % win / win * (w - 8 * d) + 4 * d;
+  const marks = App.overlays.annotate && App.op !== 'check';
   x.font = `${11 * d}px 'Barlow Semi Condensed', sans-serif`;
   chs.forEach(([k, col, mn, mx, lab], i) => {
     const y0 = i * chH + 3 * d, y1 = (i + 1) * chH - 3 * d; const yOf = (v) => y1 - (clamp(v, mn, mx) - mn) / (mx - mn) * (y1 - y0);
     x.fillStyle = col; x.fillText(lab, 6 * d, y0 + 11 * d);
-    if (k === 'art' || k === 'cvp' || k === 'co2') { x.fillStyle = 'rgba(255,255,255,.35)'; x.fillText(String(mx), w - 26 * d, y0 + 11 * d); }
+    if (k === 'art' || k === 'cvp' || k === 'co2') {
+      x.fillStyle = 'rgba(255,255,255,.35)'; x.fillText(String(mx), w - 26 * d, y0 + 11 * d);
+      x.strokeStyle = 'rgba(255,255,255,.12)'; x.setLineDash([2 * d, 4 * d]); x.beginPath(); x.moveTo(0, yOf((mn + mx) / 2)); x.lineTo(w, yOf((mn + mx) / 2)); x.stroke(); x.setLineDash([]);
+      x.fillText(String((mn + mx) / 2), w - 26 * d, yOf((mn + mx) / 2) - 2 * d);
+    }
     x.strokeStyle = col; x.lineWidth = 1.6 * d; x.beginPath(); let st = false, px = -1;
     ringIter(t0 + gap, t1, (j, t) => { const xx = xOf(t), yy = yOf(ring[k][j]); if (!st || xx < px) { x.moveTo(xx, yy); st = true; } else x.lineTo(xx, yy); px = xx; });
     x.stroke();
+    // teaching labels: CVP a, c, x, v, y and the arterial dicrotic notch, placed by cardiac phase
+    if (marks && (k === 'cvp' || k === 'art')) {
+      const pts = k === 'cvp' ? CVP_MARKS : [['notch', (ART_UP + ART_NOTCH + 0.004) % 1]];
+      x.fillStyle = '#FFFFFF'; x.font = `600 ${10.5 * d}px 'Barlow Semi Condensed', sans-serif`; x.textAlign = 'center';
+      // label only the two most recent beats so the letters stay readable at infant heart rates
+      let prev = null; const hits = [];
+      ringIter(t0 + gap, t1, (j, t) => { const ph = ring.ph[j];
+        if (prev != null) for (const [L, at] of pts) { if ((prev <= at && ph > at) || (prev > ph && (at >= prev || at < ph))) hits.push([L, t, ring[k][j]]); }
+        prev = ph; });
+      for (const [L, t, v] of hits.slice(-2 * pts.length)) { const below = L === 'x' || L === 'y' || L === 'notch'; x.fillText(L, xOf(t), yOf(v) + (below ? 12 : -4) * d); }
+      x.textAlign = 'left'; x.font = `${11 * d}px 'Barlow Semi Condensed', sans-serif`;
+    }
   });
 }
 function monCell(lab, unit, val, sub, col, alarm) { return `<div class="mn ${alarm ? 'alarm' : ''}" style="color:${col}"><div class="h"><span>${lab}</span><span>${unit}</span></div><div class="v">${val}</div>${sub ? `<div class="s">${sub}</div>` : ''}</div>`; }
@@ -2169,7 +2232,12 @@ function renderMonNums() {
   const e = App.eng; if (!e.phys) return; const g = e.g, h = e.h, A = App.monAlarms;
   const m = e.measured();
   const rr = e.phys.bagging ? e.bagParams().rate : m.RR;
-  $('#mNums').innerHTML = monCell('HR', 'bpm', fmt(h.HR), '', '#33E06A', A.hr) + monCell('ABP', 'mmHg', `${fmt(h.SBP)}/${fmt(h.DBP)}`, `(${fmt(h.MAP)})`, '#FF5B5B', A.map) + monCell('CVP', 'mmHg', fmt(h.CVP), e.phys.cardiac === 'glenn' ? 'SVC / Glenn' : e.phys.cardiac === 'fontan' ? 'Fontan' : '', '#6CB8FF', false) + monCell('SpO₂', '%', fmt(g.SpO2), 'PR ' + fmt(h.HR), '#36E0E0', A.spo2) + monCell('EtCO₂', 'mmHg', fmt(g.EtCO2), 'awRR ' + fmt(rr), '#F2F2A0', A.et);
+  // the monitor reads systolic/diastolic from the transduced trace (so damping changes them); MAP stays close to true
+  let sys = -1e9, dia = 1e9;
+  if (App.flushT == null) ringIter(e.t - 2.5, e.t, (j) => { const v = ring.art[j]; if (v > sys) sys = v; if (v < dia) dia = v; });
+  if (sys < dia) { sys = App.abpShown ? App.abpShown[0] : h.SBP; dia = App.abpShown ? App.abpShown[1] : h.DBP; }
+  App.abpShown = [sys, dia];
+  $('#mNums').innerHTML = monCell('HR', 'bpm', fmt(h.HR), '', '#33E06A', A.hr) + monCell('ABP', 'mmHg', `${fmt(sys)}/${fmt(dia)}`, `(${fmt(h.MAP)})`, '#FF5B5B', A.map) + monCell('CVP', 'mmHg', fmt(h.CVP), e.phys.cardiac === 'glenn' ? 'SVC / Glenn' : e.phys.cardiac === 'fontan' ? 'Fontan' : '', '#6CB8FF', false) + monCell('SpO₂', '%', fmt(g.SpO2), 'PR ' + fmt(h.HR), '#36E0E0', A.spo2) + monCell('EtCO₂', 'mmHg', fmt(g.EtCO2), 'awRR ' + fmt(rr), '#F2F2A0', A.et);
   $('#monPhys').textContent = CARDIAC_TYPES[e.phys.cardiac] + (e.phys.pfo ? ' with PFO' : '');
   $('#monNirs').textContent = `rSO₂ cerebral ${fmt(g.rSO2c)}%  somatic ${fmt(g.rSO2s)}%`;
 }
@@ -2259,11 +2327,12 @@ const ACTIONS = [
   ['connection', 'Check ETT / circuit connection'], ['patency', 'Assess tube patency'], ['suction', 'Suction ETT'], ['cuff', 'Assess cuff pressure / leak'],
   ['capno', 'Examine capnography'], ['waves', 'Inspect respiratory waveforms'], ['cxr', 'Chest radiograph'], ['abg', 'Obtain ABG'], ['reassess', 'Reassess patient'],
   ['bag', 'Manual ventilation (bag)'], ['rt', 'Request respiratory therapist', 1], ['escalate', 'Escalate to attending / CICU team', 1], ['emergency', 'Activate emergency response', 1],
-  ['needle', 'Needle decompression (provider)'], ['reintubate', 'ETT exchange / reintubation (team)'], ['edipos', 'Edi catheter position']
+  ['needle', 'Needle decompression (provider)'], ['reintubate', 'ETT exchange / reintubation (team)'], ['edipos', 'Edi catheter position'],
+  ['flush', 'Arterial line fast-flush (square wave) test'], ['aline', 'Troubleshoot arterial line (level, zero, tubing, bag)']
 ];
 const TEAM = [['sedation', 'Sedation / analgesia bolus'], ['paralysis', 'Neuromuscular blockade'], ['ino', 'Inhaled nitric oxide'], ['bronchodilator', 'Bronchodilator'], ['fluid', 'Fluid bolus'], ['inotrope', 'Increase inotropic support']];
 
-function docDepth(p) { return p.wt < 5 ? Math.round((6 + p.wt) * 2) / 2 : Math.round(3 * p.ett * 2) / 2; }
+function docDepth(p) { if (p.ettDepth) return p.ettDepth; return p.wt < 5 ? Math.round((6 + p.wt) * 2) / 2 : Math.round(3 * p.ett * 2) / 2; }
 function chestText(e) {
   const p = e.phys, m = e.measured();
   if ((p.disconnected && !p.bagging) || p.extubated) return 'Minimal or absent chest rise with ventilator breaths.';
@@ -2410,6 +2479,17 @@ function doAction(id) {
       App.timeline.push({ at: ct + 40, fn: (a) => { const q = a.eng.phys; q.obstruction = 0; q.obstructionType = 'secretions'; q.extubated = false; q.mainstem = false; if (!q.cuffed && q.leak > 0.15) { q.cuffed = true; q.leak = 0.01; } q.bagging = false; const en = a.eng; en.phase = 'exp'; en.expStart = en.t; en.lastAnyBreath = en.t; en.cycleStart = en.t; en.lastCtrl = en.t; en.g.U = Math.min(1, en.g.U + 0.1); a.bedside('New ETT in place, position confirmed by capnography. Back on the ventilator.'); renderBedside(); } });
       break;
     case 'edipos': openEdi(); break;
+    case 'flush':
+      App.flushT = e.t;
+      out = !interp ? 'Fast flush performed — watch the arterial trace.' : p.artDamp === 'over' ? 'Fast flush: slow, rounded return to baseline with no oscillation — overdamped. Systolic reads low and diastolic high; MAP is usually accurate.'
+        : p.artDamp === 'under' ? 'Fast flush: several oscillations before the trace settles — underdamped. Systolic reads high and diastolic low; MAP is usually accurate.' : 'Fast flush: 1–2 oscillations, then a crisp return to the waveform — optimally damped.';
+      break;
+    case 'aline':
+      if (p.artDamp === 'over') { p.artDamp = 'normal'; out = 'Transducer leveled at the phlebostatic axis and zeroed. Air bubble found and cleared from the tubing; pressure bag re-inflated to 300 mmHg. Waveform crisp again.'; }
+      else if (p.artDamp === 'under') { p.artDamp = 'normal'; out = 'Transducer leveled and zeroed. Extra extension tubing removed and replaced with short, non-compliant pressure tubing. Ringing resolved.'; }
+      else out = 'Transducer level at the phlebostatic axis and zeroed; no bubbles, kinks or clots; bag at 300 mmHg. Line is functioning.';
+      renderBedside();
+      break;
   }
   logAction(id, lab);
   if (out) App.addFeed(lab + ': ' + out, 'act');
@@ -2429,12 +2509,55 @@ function requestTeam(what) {
     a.bedside(lab + ' given.');
   } });
 }
+/* ---------- Teach: edit the patient from the Patient card ---------- */
+function openPatientEditor() {
+  const e = App.eng, p = e.phys;
+  const opt = (v, cur, lab) => `<option value="${v}" ${String(v) === String(cur) ? 'selected' : ''}>${lab}</option>`;
+  const num = (id, lab, val, mn, mx, st) => `<label class="field">${lab}<input type="number" id="${id}" min="${mn}" max="${mx}" step="${st}" value="${val}"></label>`;
+  const body = `<p class="muted" style="margin-top:0">Changing age group, weight, ETT or cardiac physiology restarts the case with the current ventilator settings${App.scn ? ' and ends the loaded scenario' : ''}. Everything else applies immediately.</p>
+  <h4>Restarts the case</h4><div class="grid2">
+    <label class="field">Age group<select id="peGroup">${Object.keys(PRESETS).map(k => opt(k, p.preset, PRESETS[k].label + ' (' + PRESETS[k].wt + ' kg)')).join('')}</select></label>
+    ${num('peWt', 'Weight (kg)', p.wt, 1, 90, 0.1)}
+    <label class="field">Cardiac physiology<select id="peCard">${Object.keys(CARDIAC_TYPES).map(k => opt(k, p.cardiac, CARDIAC_TYPES[k])).join('')}</select></label>
+    <label class="field">ETT size (mm ID)<select id="peEtt">${[2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5].map(s => opt(s.toFixed(1), p.ett.toFixed(1), s.toFixed(1))).join('')}</select></label>
+  </div><label class="tog"><input type="checkbox" id="peCuff" ${p.cuffed ? 'checked' : ''}> Cuffed ETT</label>
+  <h4>Applies immediately</h4><div class="grid2">
+    <label class="field">Age (label)<input id="peAge" value="${esc(p.age)}"></label>
+    ${num('peHb', 'Hemoglobin (g/dL)', p.hb, 7, 20, 0.5)}
+    ${num('peDepth', 'Documented ETT depth at lip (cm)', docDepth(p), 4, 26, 0.5)}
+    ${num('peFen', 'Fontan fenestration (fraction of flow, 0–0.4)', p.fen, 0, 0.4, 0.01)}
+    <label class="field">SpO₂ goal<input id="peSpo2" value="${esc(p.spo2Goal || App.config.spo2Targets[p.cardiac])}"></label>
+    <label class="field">PaCO₂ goal<input id="pePaco2" value="${esc(p.paco2Goal || App.config.paco2Targets[p.cardiac])}"></label>
+    <label class="field">Arterial line damping<select id="peDamp">${opt('normal', p.artDamp || 'normal', 'Optimally damped')}${opt('over', p.artDamp, 'Overdamped (bubble, clot, kink, soft bag)')}${opt('under', p.artDamp, 'Underdamped (long/stiff tubing, tachycardia)')}</select></label>
+    <label class="field">Tricuspid regurgitation<select id="peTr">${opt(0, p.tr || 0, 'None')}${opt(0.3, p.tr || 0, 'Moderate (prominent v wave)')}${opt(0.7, p.tr || 0, 'Severe (large cv wave)')}</select></label>
+  </div><label class="tog"><input type="checkbox" id="pePfo" ${p.pfo ? 'checked' : ''}> Atrial communication (PFO/ASD) allowing right-to-left shunt</label>`;
+  modal('Edit patient', body, [{ label: 'Cancel' }, { label: 'Apply', cls: 'primary', fn: (m) => {
+    const v = (id) => m.querySelector('#' + id);
+    const grp = v('peGroup').value, wt = clamp(+v('peWt').value || p.wt, 1, 90), card = v('peCard').value, ett = +v('peEtt').value, cuff = v('peCuff').checked;
+    const live = { age: v('peAge').value.trim() || p.age, hb: clamp(+v('peHb').value || p.hb, 7, 20), ettDepth: +v('peDepth').value || null, fen: clamp(+v('peFen').value, 0, 0.4), pfo: v('pePfo').checked,
+      spo2Goal: v('peSpo2').value.trim(), paco2Goal: v('pePaco2').value.trim(), artDamp: v('peDamp').value, tr: +v('peTr').value };
+    if (live.spo2Goal === App.config.spo2Targets[card]) live.spo2Goal = '';
+    if (live.paco2Goal === App.config.paco2Targets[card]) live.paco2Goal = '';
+    if (Math.abs(live.ettDepth - docDepth(Object.assign({}, p, { ettDepth: null }))) < 0.01) live.ettDepth = null;
+    const restart = grp !== p.preset || Math.abs(wt - p.wt) > 0.001 || card !== p.cardiac || ett !== p.ett || cuff !== p.cuffed;
+    if (!restart) { Object.assign(e.phys, live); App.addFeed('Instructor edited the patient', 'ev'); renderBedside(); renderMonNums(); return; }
+    const phys = Object.assign({}, e.phys, live, { preset: grp, wt, cardiac: card, ett, cuffed: cuff, bagging: false });
+    if (grp !== p.preset) { const d = defaultPhys(grp); if (v('peAge').value.trim() === p.age) phys.age = d.age; if (Math.abs(wt - p.wt) < 0.001) phys.wt = d.wt; }
+    if ((card === 'glenn' || card === 'parallel') && card !== p.cardiac) phys.hb = Math.max(phys.hb, 15);
+    const keep = grp === p.preset, settings = keep ? Object.assign({}, e.set) : undefined;
+    if (settings && phys.wt !== p.wt) { const st = paramStep('vt', phys.wt); settings.vt = Math.round(settings.vt / p.wt * phys.wt / st) * st; }
+    App.loadCase({ preset: grp, phys, mode: e.mode, settings, alarms: keep && phys.wt === p.wt ? Object.assign({}, e.lim) : undefined }, { scn: null });
+    App.toast('Patient updated and case restarted');
+  } }], { wide: true });
+}
 function renderBedside() {
   const e = App.eng, p = e.phys, scn = App.scn;
   const desc = scn ? scn.brief : `${p.age}, ${fmt(p.wt, 1)} kg. ${CARDIAC_TYPES[p.cardiac]} physiology. Free-practice patient.`;
-  const tgt = App.config.spo2Targets[p.cardiac], ct = App.config.paco2Targets[p.cardiac];
-  $('#ptCard').innerHTML = `<h3>Patient</h3><p style="margin:0 0 6px">${esc(desc)}</p>
-    <div class="grid2 muted"><span>ETT ${fmt(p.ett, 1)} ${p.cuffed ? 'cuffed' : 'uncuffed'}</span><span>Documented depth ${fmt(docDepth(p), 1)} cm</span><span>SpO₂ goal ${esc(tgt)}</span><span>PaCO₂ goal ${esc(ct)}</span></div>`;
+  const tgt = p.spo2Goal || App.config.spo2Targets[p.cardiac], ct = p.paco2Goal || App.config.paco2Targets[p.cardiac];
+  const lines = [p.artDamp && p.artDamp !== 'normal' ? `Arterial line ${p.artDamp === 'over' ? 'overdamped' : 'underdamped'}` : '', p.tr > 0.05 ? `Tricuspid regurgitation ${p.tr >= 0.6 ? 'severe' : p.tr >= 0.3 ? 'moderate' : 'mild'}` : ''].filter(Boolean);
+  $('#ptCard').innerHTML = `<div class="pthead"><h3>Patient</h3>${App.op === 'teach' ? '<button class="btn small" id="ptEdit">Edit patient</button>' : ''}</div><p style="margin:0 0 6px">${esc(desc)}</p>
+    <div class="grid2 muted"><span>${esc(p.age)} · ${fmt(p.wt, 1)} kg · Hb ${fmt(p.hb, 1)}</span><span>${esc(CARDIAC_TYPES[p.cardiac])}${p.pfo ? ' + PFO' : ''}</span><span>ETT ${fmt(p.ett, 1)} ${p.cuffed ? 'cuffed' : 'uncuffed'}</span><span>Documented depth ${fmt(docDepth(p), 1)} cm</span><span>SpO₂ goal ${esc(tgt)}</span><span>PaCO₂ goal ${esc(ct)}</span>${lines.map(l => `<span>${esc(l)}</span>`).join('')}</div>`;
+  if ($('#ptEdit')) $('#ptEdit').onclick = openPatientEditor;
   $('#tp-bedside').innerHTML = `<div class="bedgrid"><div>
   <div class="card"><h3>Actions and assessment</h3><div class="actions">${ACTIONS.map(([id, n, esc2]) => `<button class="btn ${esc2 ? 'esc' : ''} ${id === 'bag' && p.bagging ? 'on' : ''}" data-a="${id}">${id === 'bag' && p.bagging ? 'Return to ventilator' : esc(n)}</button>`).join('')}</div>
     <div class="teamrow"><h4>Request team intervention</h4><select class="sel" id="teamSel">${TEAM.map(t => `<option value="${t[0]}">${t[1]}</option>`).join('')}</select><button class="btn" id="teamBtn">Request</button></div></div>
