@@ -161,7 +161,7 @@ body.vent-full .vscreen{ height:calc(100vh - 170px); }
 .tabs{ display:flex; border-bottom:1px solid var(--line); background:var(--panel2); overflow-x:auto; }
 .tabs button{ border:0; background:transparent; padding:8px 14px; font-weight:600; color:var(--ink2); border-bottom:3px solid transparent; white-space:nowrap; }
 .tabs button[aria-selected="true"]{ color:var(--ink); border-bottom-color:var(--accent); background:var(--panel); }
-.tabpanel{ padding:10px 12px; overflow:auto; flex:1; min-height:0; max-height:70vh; }
+.tabpanel{ padding:10px 12px; overflow:auto; flex:1; min-height:0; }
 @media (max-width:1150px){ .tabpanel{ max-height:none; } }
 .tabpanel[hidden]{ display:none; }
 .card{ background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:12px; margin-bottom:12px; }
@@ -269,23 +269,28 @@ textarea{ width:100%; }
 .toast{ position:fixed; left:50%; bottom:76px; transform:translateX(-50%); background:#13293A; color:#E7EEF2; border:1px solid #2B4D66; padding:10px 16px; border-radius:10px; z-index:60; max-width:min(560px,92vw); font-size:14px; box-shadow:0 8px 20px rgba(0,0,0,.3); }
 .expect{ position:fixed; right:18px; bottom:80px; width:min(380px,90vw); background:var(--panel); border:1px solid var(--line); border-top:4px solid var(--accent); border-radius:12px; padding:12px 14px; z-index:40; box-shadow:0 10px 26px rgba(0,0,0,.25); font-size:13.5px; }
 .expect h4{ margin:0 0 4px; font-family:var(--serif); font-size:15px; }
-/* Desktop: the whole bench fits the window; long panels scroll inside themselves */
-@media (min-width: 1151px) and (min-height: 700px){
-  body{ height:100vh; height:100dvh; display:flex; flex-direction:column; overflow:hidden; }
-  .topbar, .dock{ flex:none; }
-  .dock{ position:static; }
-  .bench{ flex:1; min-height:0; }
-  .col-l > .vent-dev{ flex:none; }
-  .col-l > .clin{ flex:1; min-height:0; }
-  .col-r > .mon-dev{ flex:1; min-height:0; display:flex; }
-  .mon-dev .mon-housing{ flex:1; display:flex; flex-direction:column; min-height:0; }
-  .mon-dev .mscreen{ flex:1; height:auto; min-height:240px; }
-  .vscreen{ height:clamp(380px, calc(100dvh - 410px), 680px); }
+/* Laptop and desktop: the page scrolls like the other labs. The bench is no longer locked to one screen,
+   so the Lessons / Bedside actions / Check-off panel keeps its natural height instead of getting leftovers. */
+@media (min-width: 1151px){
+  .vscreen{ height:clamp(440px, 58vh, 680px); }
   body.vent-full .vscreen{ height:calc(100dvh - 150px); }
   .tabpanel{ max-height:none; }
 }
 @media (min-width: 1400px){ .topbar{ flex-wrap:nowrap; } .brand{ flex:1 1 0; } .simctl{ flex-wrap:nowrap; } }
 @media (min-width: 1151px) and (max-height: 699px){ .vscreen{ height:clamp(380px, 60vh, 520px); } }
+/* Phones: one-row toolbar that scrolls sideways on purpose, and a compact bottom bar */
+@media (max-width: 640px){
+  .topbar{ gap:8px 10px; }
+  .simctl{ flex-wrap:nowrap; overflow-x:auto; width:100%; margin-left:0; padding:0 30px 4px 0; scrollbar-width:thin; -webkit-overflow-scrolling:touch;
+    -webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 30px),transparent); mask-image:linear-gradient(90deg,#000 calc(100% - 30px),transparent); }
+  .simctl > *{ flex:none; }
+  .dock{ gap:6px 8px; padding:6px 10px calc(7px + env(safe-area-inset-bottom,0px)); border-top-width:3px; }
+  .dock .lbl{ flex:1 1 130px; min-width:0; font-size:13px; gap:5px; }
+  .dock .sel{ flex:1 1 auto; min-width:0; max-width:100%; width:100%; font-size:14px; padding:5px 8px; text-overflow:ellipsis; }
+  .dock .btn{ font-size:14px; padding:5px 10px; }
+  .dock .status{ flex:1 1 100%; min-width:0; order:5; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .dock .timer{ font-size:22px; padding:0 10px; }
+}
 #printArea{ display:none; }
 @media print{
   body > *:not(#printArea){ display:none !important; }
