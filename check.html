@@ -324,6 +324,296 @@ h1,h2,h3,h4{font-family:"Atkinson Hyperlegible Next", "Segoe UI", "Helvetica Neu
 
 /* PAA-THEME:END */
 </style>
+
+<!-- paa-lesson-dock -->
+<style>
+/* Lesson dock: shared layout for Learn mode (module map, step, goal rows). Only takes effect when the dock script runs. */
+/* Pediatric APP Academy: lesson dock prototype (proposal for Kayleigh, not part of her labs).
+   Loaded after a lab page's own styles. Uses the lab's tokens (--room, --panel, --ink, --ink2,
+   --line, --accent, --ok, --info) and adds only the --paa-* gaps named in the design plan. */
+
+:root{
+  --paa-dock-w:420px;
+  --paa-bar-h:0px;
+  --paa-goal-bg:#DDEBF2;
+  --paa-ring-in:var(--room,#F5F4F0);
+  --paa-ring-out:#333F48;
+  --paa-focus-ring:0 0 0 2px var(--paa-ring-in), 0 0 0 4px var(--paa-ring-out);
+  --paa-focus-ring-dark:0 0 0 2px #14191E, 0 0 0 4px #F2C230;
+  --paa-cell:12px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ --paa-goal-bg:#1F3340; --paa-ring-out:#F2C230; }
+}
+:root[data-theme="dark"]{ --paa-goal-bg:#1F3340; --paa-ring-out:#F2C230; }
+
+/* ---------- focus: two-tone ring, visible on light and dark surfaces (finding 15) ---------- */
+body.paa :focus-visible{ outline:none !important; box-shadow:var(--paa-focus-ring) !important; }
+body.paa .topbar :focus-visible,
+body.paa .vscreen :focus-visible,
+body.paa .mon-dev :focus-visible,
+body.paa .paa-dark :focus-visible{ box-shadow:var(--paa-focus-ring-dark) !important; }
+
+/* ---------- laptop and workstation: device left, lesson docked right ---------- */
+body.paa .bench{
+  grid-template-columns:minmax(0,1fr) var(--paa-dock-w);
+  grid-template-areas:"vent dock" "mon dock" "clin dock" "pt dock";
+  align-items:start; max-width:none;
+}
+body.paa .col-l, body.paa .col-r{ display:contents; }
+body.paa .vent-dev{ grid-area:vent; min-width:0; }
+body.paa .mon-dev{ grid-area:mon; min-width:0; }
+body.paa .clin{ grid-area:clin; min-width:0; }
+body.paa #ptCard{ grid-area:pt; min-width:0; margin:0; }
+body.paa .mscreen{ height:clamp(200px, 26vh, 320px); }
+body.paa.paa-compact .vscreen{ height:clamp(380px, 50vh, 520px); }
+body.paa footer.dock{ display:none; }
+body.paa #tabCaseBtn{ display:none; }
+
+#paa-dock{
+  grid-area:dock; position:sticky; top:12px; align-self:start;
+  height:calc(100dvh - 24px); max-height:calc(100dvh - 24px);
+  display:flex; flex-direction:column; min-width:0;
+  background:var(--panel,#fff); color:var(--ink); border:1px solid var(--line); border-radius:14px;
+  font-family:var(--font); font-size:16px; line-height:1.5;
+}
+.paa-handle{
+  position:absolute; left:-9px; top:0; bottom:0; width:12px; cursor:col-resize; touch-action:none;
+  display:flex; align-items:center; justify-content:center;
+}
+.paa-handle::before{ content:""; width:4px; height:44px; border-radius:2px; background:var(--line); }
+.paa-handle:hover::before, .paa-handle:focus-visible::before{ background:var(--shade,#9CADB7); }
+
+/* header: where am I */
+.paa-head{ padding:14px 18px 10px; border-bottom:1px solid var(--line); }
+.paa-head-top{ display:flex; gap:8px; align-items:center; justify-content:space-between; min-height:28px; }
+.paa-pos{ margin:0; font-size:14px; line-height:20px; color:var(--ink2); }
+.paa-title{ margin:2px 0 0; font-family:var(--serif); font-weight:700; font-size:19px; line-height:26px; color:var(--ink); }
+.paa-tools{ display:flex; gap:4px; flex:none; }
+.paa-iconbtn{ border:1px solid var(--line); background:transparent; color:var(--ink); border-radius:6px; padding:2px 8px; font-size:13px; line-height:20px; white-space:nowrap; }
+.paa-iconbtn[aria-pressed="true"]{ background:var(--panel2); border-color:var(--ink2); }
+
+.paa-note{ margin:8px 0 0; font-size:15px; line-height:22px; color:var(--ink2); max-width:60ch; }
+/* module list state: the map is the content */
+#paa-dock.paa-listmode .paa-head{ flex:1; min-height:0; display:flex; flex-direction:column; border-bottom:0; }
+#paa-dock.paa-listmode .paa-map{ flex:1; min-height:0; display:flex; flex-direction:column; }
+#paa-dock.paa-listmode .paa-map ol{ flex:1; max-height:none; }
+#paa-dock.paa-listmode .paa-map > summary{ display:none; }
+#paa-dock.paa-listmode .paa-body:empty, #paa-dock.paa-listmode .paa-foot:empty{ display:none; }
+#paa-dock.paa-listmode .paa-body{ flex:none; border-top:1px solid var(--line); }
+
+/* module map: modules are rows, steps are cells */
+.paa-map{ margin-top:10px; }
+.paa-map > summary{ list-style:none; cursor:pointer; display:flex; align-items:center; gap:10px; font-size:14px; color:var(--ink2); padding:4px 0; border-radius:6px; }
+.paa-map > summary::-webkit-details-marker{ display:none; }
+.paa-map > summary .paa-caret{ width:0; height:0; border:5px solid transparent; border-left-color:var(--ink2); transition:transform .12s; margin-left:2px; }
+.paa-map[open] > summary .paa-caret{ transform:rotate(90deg) translateX(2px); }
+.paa-map ol{ list-style:none; margin:6px 0 0; padding:0; max-height:min(46vh, 420px); overflow:auto; }
+.paa-row{
+  width:100%; display:grid; grid-template-columns:24px auto minmax(0,1fr); grid-template-rows:auto auto; column-gap:8px;
+  text-align:left; background:transparent; border:0; border-top:1px solid var(--line); padding:7px 4px; color:var(--ink); border-radius:0;
+}
+.paa-map li:first-child .paa-row{ border-top:0; }
+.paa-row:hover{ background:var(--panel2); }
+.paa-row[aria-current="true"]{ background:var(--panel2); }
+.paa-row .n{ grid-row:1 / span 2; font-family:var(--cond); font-weight:600; font-size:16px; font-variant-numeric:tabular-nums; color:var(--ink2); padding-top:1px; }
+.paa-row .t{ grid-column:2 / span 2; grid-row:1; font-size:15px; line-height:21px; min-width:0; }
+.paa-row .cells{ grid-column:2; grid-row:2; margin-top:4px; }
+.paa-row .sum{ grid-column:3; grid-row:2; font-size:13px; line-height:20px; color:var(--ink2); margin-top:1px; min-width:0; }
+
+.cells{ display:flex; gap:3px; align-items:center; }
+.cell{ width:var(--paa-cell); height:var(--paa-cell); border:1.5px solid var(--ink2); border-radius:2px; flex:none; box-sizing:border-box; }
+.cell.done{ background:var(--ok); border-color:var(--ok); }
+.cell.skip{ background:repeating-linear-gradient(135deg, var(--ink2) 0 1.5px, transparent 1.5px 4px); }
+.cell.cur{ border-color:var(--accent); box-shadow:0 0 0 2px var(--accent); }
+.cell.cur.done{ box-shadow:0 0 0 2px var(--accent); }
+
+/* body: the current step */
+.paa-body{ flex:1; overflow:auto; padding:14px 18px 18px; min-height:0; overscroll-behavior:contain; }
+.paa-body:focus{ outline:none; }
+.paa-kind{ margin:0 0 6px; font-size:14px; line-height:20px; color:var(--ink2); }
+.paa-kind:focus{ outline:none; }
+.paa-body p{ margin:0 0 12px; max-width:62ch; }
+.paa-body > *{ max-width:640px; }
+.paa-body p:last-child{ margin-bottom:0; }
+.paa-intro{ color:var(--ink2); font-size:15px; }
+.paa-continue{ display:block; width:100%; text-align:left; margin:4px 0 14px; padding:10px 12px; border:1px solid var(--ink2); border-radius:10px; background:var(--panel2); color:var(--ink); }
+.paa-continue b{ display:block; }
+
+/* demonstration: what to look at on the device */
+.paa-look{ list-style:none; margin:12px 0; padding:0; border-left:3px solid var(--line); }
+.paa-look li{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:4px 0 4px 12px; font-size:15px; }
+.paa-look .what{ font-family:var(--cond); font-weight:600; font-size:17px; }
+
+/* guided exercise: the goal rows (the one memorable thing) */
+.paa-goal{ margin:14px 0 10px; border-radius:10px; background:var(--paa-goal-bg); padding:4px 0; }
+.paa-goal table{ width:100%; border-collapse:collapse; }
+.paa-goal th, .paa-goal td{ padding:6px 8px; text-align:left; font-weight:400; vertical-align:baseline; }
+.paa-goal tr > :first-child{ padding-left:12px; }
+.paa-goal tr > :last-child{ padding-right:12px; }
+.paa-goal thead th{ font-size:13px; color:var(--ink2); padding-top:6px; padding-bottom:0; }
+.paa-goal tbody tr + tr td, .paa-goal tbody tr + tr th{ border-top:1px solid color-mix(in srgb, var(--ink2) 28%, transparent); }
+.paa-goal .p{ font-family:var(--cond); font-weight:600; font-size:18px; line-height:24px; }
+.paa-goal .p button{ white-space:nowrap; }
+.paa-goal .p .u{ display:block; font-family:var(--font); font-weight:400; font-size:13px; line-height:17px; color:var(--ink2); }
+.paa-goal .p button{ all:unset; cursor:pointer; border-bottom:1px dotted var(--ink2); }
+.paa-goal .p button:focus-visible{ box-shadow:var(--paa-focus-ring) !important; border-radius:3px; }
+.paa-goal .tg{ font-family:var(--cond); font-size:18px; font-variant-numeric:tabular-nums; }
+.paa-goal .now{ font-family:var(--cond); font-weight:600; font-size:20px; font-variant-numeric:tabular-nums; text-align:right; white-space:nowrap; }
+.paa-goal .st{ font-size:14px; text-align:right; }
+.paa-goal tbody .st{ white-space:nowrap; }
+.paa-goal tr.met .st{ color:var(--ink); font-weight:700; }
+.paa-goal tr.met .st::before{ content:""; display:inline-block; width:8px; height:8px; margin-right:6px; background:var(--ok); border-radius:2px; vertical-align:1px; }
+.paa-goal tr.not .st{ color:var(--ink2); }
+.paa-goal tr.not .st::before{ content:""; display:inline-block; width:8px; height:8px; margin-right:6px; border:1.5px solid var(--ink2); border-radius:2px; vertical-align:0; box-sizing:border-box; }
+.paa-status{ margin:4px 0 12px; font-size:15px; color:var(--ink2); }
+.paa-status.met{ color:var(--ink); }
+.paa-status.met b{ color:var(--ok); }
+.paa-status b{ display:block; }
+.paa-hint{ margin:8px 0; }
+.paa-hint summary{ cursor:pointer; color:var(--ink); font-size:15px; display:inline-block; border-radius:6px; }
+.paa-hint p{ margin:6px 0 0; font-size:15px; color:var(--ink2); }
+.paa-inline{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+
+/* knowledge check */
+.paa-stem{ font-family:var(--serif); font-size:19px; line-height:27px; margin:0 0 12px; font-weight:400; max-width:56ch; }
+.paa-opts{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px; }
+.paa-opt{
+  width:100%; display:grid; grid-template-columns:28px minmax(0,1fr); gap:8px; align-items:start; text-align:left;
+  border:1px solid var(--line); background:var(--panel); color:var(--ink); border-radius:10px; padding:9px 12px; font-size:15px; line-height:21px;
+}
+.paa-opt:hover:not(:disabled){ border-color:var(--ink2); }
+.paa-opt .k{ font-family:var(--cond); font-weight:600; font-size:17px; color:var(--ink2); }
+.paa-opt:disabled{ cursor:default; opacity:1; }
+.paa-opt.right{ border:2px solid var(--ok); padding:8px 11px; }
+.paa-opt.wrong{ border:2px solid var(--ink2); padding:8px 11px; }
+.paa-opt .tag{ display:block; font-size:13px; font-weight:700; margin-top:2px; }
+.paa-opt.right .tag{ color:var(--ok); }
+.paa-opt.wrong .tag{ color:var(--ink2); }
+.paa-feedback{ margin-top:12px; padding:10px 12px; border-left:3px solid var(--ink2); font-size:15px; }
+.paa-feedback.right{ border-left-color:var(--ok); }
+.paa-feedback b{ display:block; }
+.paa-feedback:focus{ outline:none; }
+
+/* read ahead */
+.paa-ahead-note{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin:0 0 12px; padding:8px 12px; border-radius:10px; background:var(--panel2); font-size:14px; }
+.paa-steplist{ list-style:none; margin:0 0 14px; padding:0; counter-reset:s; }
+.paa-steplist li{ display:grid; grid-template-columns:24px minmax(0,1fr); gap:8px; padding:8px 0; border-top:1px solid var(--line); font-size:15px; }
+.paa-steplist li:first-child{ border-top:0; }
+.paa-steplist .n{ font-family:var(--cond); font-weight:600; color:var(--ink2); }
+.paa-steplist .k{ display:block; font-size:13px; color:var(--ink2); }
+
+/* finished */
+.paa-facts{ margin:8px 0 14px; display:grid; grid-template-columns:auto 1fr; gap:4px 14px; font-size:15px; }
+.paa-facts dt{ font-family:var(--cond); font-weight:600; font-size:20px; font-variant-numeric:tabular-nums; text-align:right; }
+.paa-facts dd{ margin:0; align-self:center; color:var(--ink2); }
+
+/* footer: move through the module */
+.paa-foot{ display:flex; gap:8px; align-items:center; padding:10px 18px 12px; border-top:1px solid var(--line); flex-wrap:wrap; }
+.paa-foot .why{ flex:1 1 100%; order:-1; margin:0; font-size:13px; color:var(--ink2); }
+.paa-foot .spacer{ flex:1; }
+.paa-btn{ border:1px solid var(--line); background:var(--panel); color:var(--ink); border-radius:8px; padding:7px 14px; font-size:15px; line-height:21px; font-weight:500; }
+.paa-btn:hover:not(:disabled){ border-color:var(--ink2); }
+.paa-btn.primary{ background:var(--ink); color:var(--room); border-color:var(--ink); font-weight:700; }
+.paa-btn:disabled{ opacity:.45; cursor:not-allowed; }
+.paa-bar{ display:none; }
+
+/* device focus: dock becomes a slim rail */
+body.paa.paa-devicefocus{ --paa-dock-w:76px; }
+body.paa-devicefocus #paa-dock .paa-head, body.paa-devicefocus #paa-dock .paa-body, body.paa-devicefocus #paa-dock .paa-foot, body.paa-devicefocus .paa-handle{ display:none; }
+.paa-rail{ display:none; }
+body.paa-devicefocus .paa-rail{ display:flex; flex-direction:column; align-items:center; gap:10px; padding:12px 6px; height:100%; }
+.paa-rail .r-step{ font-family:var(--cond); font-weight:600; font-size:20px; font-variant-numeric:tabular-nums; }
+.paa-rail .r-goal{ font-size:12px; text-align:center; color:var(--ink2); line-height:16px; }
+.paa-rail .r-goal.met{ color:var(--ok); font-weight:700; }
+.paa-rail .paa-btn{ padding:6px 8px; font-size:14px; }
+
+/* "Show on device": user-triggered only */
+.paa-ping{ outline:3px solid var(--accent) !important; outline-offset:2px; animation:paa-ping 0.9s ease-out 2; position:relative; z-index:3; }
+@keyframes paa-ping{ 0%{ outline-offset:2px; } 50%{ outline-offset:7px; } 100%{ outline-offset:2px; } }
+@media (prefers-reduced-motion: reduce){ .paa-ping{ animation:none; } .paa-map > summary .paa-caret{ transition:none; } }
+
+.paa-sr{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+
+/* ---------- tablet landscape: narrower dock ---------- */
+@media (max-width: 1260px) and (min-width: 1100px){ :root{ --paa-dock-w:360px; } }
+
+/* ---------- below 1100 px: stack the device, lesson becomes a bottom sheet ---------- */
+@media (max-width: 1099px){
+  body.paa .bench{ grid-template-columns:minmax(0,1fr); grid-template-areas:"vent" "mon" "clin" "pt"; }
+  body.paa{ padding-bottom:var(--paa-bar-h); }
+  body.paa.paa-sheet-open{ padding-bottom:58dvh; }
+  .paa-handle, .paa-tools [data-paa="focus"]{ display:none; }
+  #paa-dock{
+    position:fixed; left:0; right:0; bottom:0; top:auto; z-index:20; height:auto; max-height:none;
+    border-radius:14px 14px 0 0; border-bottom:0; box-shadow:0 -4px 16px rgba(20,30,40,.22);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  body.paa:not(.paa-sheet-open) #paa-dock .paa-head,
+  body.paa:not(.paa-sheet-open) #paa-dock .paa-body,
+  body.paa:not(.paa-sheet-open) #paa-dock .paa-foot{ display:none; }
+  body.paa.paa-sheet-open #paa-dock{ height:58dvh; }
+  .paa-bar{ display:flex; align-items:center; gap:10px; padding:8px 12px; min-height:56px; }
+  .paa-bar .b-open{ all:unset; flex:1; min-width:0; cursor:pointer; display:flex; flex-direction:column; border-radius:8px; padding:2px 4px; }
+  .paa-bar .b-open:focus-visible{ box-shadow:var(--paa-focus-ring) !important; }
+  .paa-bar .b-pos{ font-size:13px; color:var(--ink2); line-height:18px; }
+  .paa-bar .b-what{ font-size:15px; line-height:20px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .paa-bar .b-what .num{ font-family:var(--cond); font-weight:600; font-size:17px; }
+  body.paa.paa-sheet-open .paa-bar{ border-bottom:1px solid var(--line); }
+  body.paa.paa-sheet-open .paa-bar .b-next{ display:none; }
+  #paa-dock .paa-head-top, #paa-dock .paa-title{ display:none; }
+  #paa-dock.paa-listmode .paa-title{ display:block; }
+  .paa-foot .paa-btn{ padding:6px 11px; font-size:14px; }
+  .paa-body{ padding:12px 16px 16px; }
+  .paa-head{ padding:10px 16px 8px; }
+  .paa-foot{ padding:8px 16px 10px; }
+}
+
+/* ---------- phone: collapse the toolbar ---------- */
+@media (max-width: 760px){
+  body.paa .simctl{ flex-wrap:wrap; overflow:visible !important; }
+  body.paa .simctl > :not(#btnPause):not(.paa-simbtn){ display:none !important; }
+  body.paa .simctl.paa-open > :not(#btnPause):not(.paa-simbtn){ display:inline-flex !important; }
+  body.paa .simctl.paa-open{ row-gap:6px; }
+  .paa-simbtn{ display:inline-flex !important; }
+  .paa-title{ font-size:18px; line-height:24px; }
+  .paa-stem{ font-size:18px; line-height:26px; }
+  .paa-goal th, .paa-goal td{ padding:6px 10px; }
+  .paa-goal .st{ width:auto; }
+  .paa-map ol{ max-height:38dvh; }
+}
+@media (min-width: 761px){ .paa-simbtn{ display:none !important; } }
+
+/* programmatic focus targets (step heading, feedback) move focus for screen readers without a ring */
+body.paa .paa-kind:focus-visible, body.paa .paa-feedback:focus-visible, body.paa #step .fb:focus-visible{ box-shadow:none !important; }
+/* resize guide: moved with transform only while dragging the dock edge */
+.paa-guide{ position:fixed; top:0; bottom:0; left:0; width:2px; background:var(--accent); z-index:30; pointer-events:none; will-change:transform; }
+
+/* round 2 */
+.paa-map > summary .m-sum{ display:flex; align-items:center; gap:8px; white-space:nowrap; }
+.paa-steplink{ all:unset; cursor:pointer; display:block; border-radius:6px; padding:0 2px; }
+.paa-steplink:hover{ background:var(--panel2); }
+.paa-steplink:focus-visible{ box-shadow:var(--paa-focus-ring) !important; }
+.paa-skip{ position:absolute; left:8px; top:-60px; z-index:100; background:var(--panel); color:var(--ink); padding:8px 12px; border-radius:8px; border:1px solid var(--ink); }
+.paa-skip:focus{ top:8px; }
+/* the lab's own notices sit over the device, not over the lesson */
+body.paa .toast{ left:calc((100vw - var(--paa-dock-w)) / 2); }
+/* device focus: give the device the lab's original side-by-side layout, with the lesson as a rail */
+body.paa.paa-devicefocus .bench{ grid-template-columns:minmax(0,1.65fr) minmax(300px,1fr) var(--paa-dock-w); grid-template-areas:"vent mon dock" "clin pt dock"; }
+@media (max-width: 1099px){
+  body.paa .toast{ left:50%; bottom:calc(var(--paa-bar-h) + 10px); }
+  body.paa.paa-sheet-open .toast{ bottom:calc(58dvh + 10px); }
+  #paa-dock .paa-head{ padding-top:6px; padding-bottom:6px; }
+  #paa-dock .paa-map{ margin-top:0; }
+}
+/* short windows, including 200% zoom: the sheet takes more of the screen and the map folds away */
+@media (max-width: 1099px) and (max-height: 600px){
+  body.paa.paa-sheet-open #paa-dock{ height:88dvh; }
+  body.paa.paa-sheet-open{ padding-bottom:88dvh; }
+  body.paa.paa-sheet-open .toast{ bottom:calc(88dvh + 10px); }
+}
+</style>
+<!-- /paa-lesson-dock -->
 </head>
 <body>
 <header class="topbar">
@@ -3289,5 +3579,600 @@ function init() {
 document.addEventListener('DOMContentLoaded', init);
 
 </script>
+
+<!-- paa-lesson-dock -->
+<script>
+/* Lesson dock, shared part */
+/* Pediatric APP Academy: lesson dock prototype, shared part.
+   A proposal for Kayleigh. It adds a docked lesson panel to a copy of a lab page and draws
+   into it; each lab's adapter script supplies the content from that lab's own lesson data.
+   Nothing here changes how a lab simulates, scores or saves. */
+(function () {
+  'use strict';
+  const doc = document;
+  const h = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* private window: fine */ } }
+  };
+  const narrow = () => matchMedia('(max-width: 1099px)').matches;
+  const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function shell(opts) {
+    const grid = opts.grid;
+    const lab = opts.lab;
+    doc.body.classList.add('paa');
+    const dock = doc.createElement('aside');
+    dock.id = 'paa-dock';
+    dock.setAttribute('aria-label', 'Lesson');
+    dock.innerHTML = `
+      <div class="paa-handle" role="separator" aria-orientation="vertical" aria-label="Resize lesson panel" tabindex="0"></div>
+      <div class="paa-bar">
+        <button class="b-open" type="button" aria-expanded="false" aria-controls="paa-dock"><span class="b-pos"></span><span class="b-what"></span></button>
+        <button class="paa-btn primary b-next" type="button" hidden></button>
+      </div>
+      <div class="paa-rail"><span class="r-step"></span><span class="r-goal"></span><button class="paa-btn r-next" type="button" hidden>Next</button><button class="paa-btn r-back" type="button" aria-pressed="true" title="Show the lesson panel">Lesson</button></div>
+      <header class="paa-head">
+        <div class="paa-head-top">
+          <p class="paa-pos"></p>
+          <div class="paa-tools">
+            ${opts.compact ? '<button class="paa-iconbtn" type="button" data-paa="compact" aria-pressed="false" title="Make the ventilator shorter so more of the page fits">Compact</button>' : ''}
+            ${opts.copyLink ? '<button class="paa-iconbtn" type="button" data-paa="copy" hidden title="Copy a link that opens this module">Copy link</button>' : ''}
+            <button class="paa-iconbtn" type="button" data-paa="focus" aria-pressed="false" title="Give the device the screen; the lesson shrinks to a rail">Device focus</button>
+          </div>
+        </div>
+        <h2 class="paa-title"></h2>
+        <p class="paa-note" hidden></p>
+        <details class="paa-map"><summary><span class="paa-caret" aria-hidden="true"></span><span class="m-sum">All modules</span></summary><ol></ol></details>
+      </header>
+      <div class="paa-body" tabindex="-1"></div>
+      <footer class="paa-foot"></footer>`;
+    grid.appendChild(dock);
+    const r = {
+      dock, grid,
+      pos: dock.querySelector('.paa-pos'), title: dock.querySelector('.paa-title'), note: dock.querySelector('.paa-note'),
+      map: dock.querySelector('.paa-map'), mapList: dock.querySelector('.paa-map ol'), mapSum: dock.querySelector('.m-sum'),
+      body: dock.querySelector('.paa-body'), foot: dock.querySelector('.paa-foot'),
+      bar: dock.querySelector('.paa-bar'), barOpen: dock.querySelector('.b-open'), barPos: dock.querySelector('.b-pos'), barWhat: dock.querySelector('.b-what'), barNext: dock.querySelector('.b-next'),
+      rail: dock.querySelector('.paa-rail'), railStep: dock.querySelector('.r-step'), railGoal: dock.querySelector('.r-goal'), railNext: dock.querySelector('.r-next')
+    };
+
+    /* width: drag the left edge, or arrow keys on it; remembered */
+    const root = doc.documentElement;
+    const saved = store.get('paa_dock_w', null);
+    if (saved) root.style.setProperty('--paa-dock-w', saved + 'px');
+    const handle = dock.querySelector('.paa-handle');
+    const clampW = (w) => Math.max(340, Math.min(560, Math.round(w)));
+    /* While dragging, only a guide line moves (transform, no layout), so the device's
+       canvases are not resized every frame. The new width is applied once, on release. */
+    const guide = doc.createElement('div');
+    guide.className = 'paa-guide'; guide.hidden = true; doc.body.appendChild(guide);
+    let dragging = false, right = 0, want = 0, raf = 0;
+    const moveGuide = () => { raf = 0; guide.style.transform = `translateX(${Math.round(right - want)}px)`; };
+    handle.addEventListener('pointerdown', (e) => {
+      dragging = true; handle.setPointerCapture(e.pointerId); e.preventDefault();
+      const r0 = dock.getBoundingClientRect(); right = r0.right; want = r0.width;
+      guide.hidden = false; moveGuide();
+    });
+    handle.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      want = clampW(right - e.clientX);
+      if (!raf) raf = requestAnimationFrame(moveGuide);
+    });
+    const end = () => {
+      if (!dragging) return; dragging = false; guide.hidden = true;
+      root.style.setProperty('--paa-dock-w', want + 'px'); store.set('paa_dock_w', want);
+    };
+    handle.addEventListener('pointerup', end);
+    handle.addEventListener('pointercancel', end);
+    handle.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      e.preventDefault();
+      const w = clampW(dock.getBoundingClientRect().width + (e.key === 'ArrowLeft' ? 24 : -24));
+      root.style.setProperty('--paa-dock-w', w + 'px'); store.set('paa_dock_w', w);
+    });
+
+    /* copy a link to the current module (for "do Module 3 before Thursday") */
+    const copyBtn = dock.querySelector('[data-paa="copy"]');
+    let copyHash = null;
+    r.setCopy = (hash) => { copyHash = hash; if (copyBtn) copyBtn.hidden = !hash; };
+    if (copyBtn) copyBtn.addEventListener('click', async () => {
+      const url = location.href.split('#')[0] + copyHash;
+      try { await navigator.clipboard.writeText(url); copyBtn.textContent = 'Link copied'; }
+      catch (e) { prompt('Copy this link', url); }
+      setTimeout(() => { copyBtn.textContent = 'Copy link'; }, 2000);
+    });
+
+    /* skip link for keyboard users: straight to the lesson */
+    const skip = doc.createElement('a');
+    skip.href = '#paa-dock'; skip.className = 'paa-skip'; skip.textContent = 'Skip to lesson';
+    skip.addEventListener('click', (e) => { e.preventDefault(); if (narrow()) setSheet(true); const t = dock.querySelector('.paa-kind') || dock.querySelector('.paa-row') || r.barOpen; if (t) { if (!t.hasAttribute('tabindex') && !/BUTTON|A/.test(t.tagName)) t.tabIndex = -1; t.focus(); } });
+    doc.body.prepend(skip);
+
+    /* device focus rail */
+    const focusBtn = dock.querySelector('[data-paa="focus"]');
+    const setFocus = (on) => {
+      doc.body.classList.toggle('paa-devicefocus', on);
+      focusBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      store.set('paa_devicefocus_' + lab, on);
+      if (!on) focusBtn.focus({ preventScroll: true });
+    };
+    focusBtn.addEventListener('click', () => setFocus(true));
+    dock.querySelector('.r-back').addEventListener('click', () => setFocus(false));
+    if (store.get('paa_devicefocus_' + lab, false) && !narrow()) setFocus(true);
+
+    /* compact ventilator */
+    const compactBtn = dock.querySelector('[data-paa="compact"]');
+    if (compactBtn) {
+      const setC = (on) => { doc.body.classList.toggle('paa-compact', on); compactBtn.setAttribute('aria-pressed', on ? 'true' : 'false'); store.set('paa_compact_' + lab, on); };
+      compactBtn.addEventListener('click', () => setC(!doc.body.classList.contains('paa-compact')));
+      setC(store.get('paa_compact_' + lab, false));
+    }
+
+    /* the dock fills the window from wherever it starts, so its footer is always on screen.
+       One read of the grid's top per scroll frame; writes only when the value changes. */
+    let lastH = -1, rafId = 0;
+    const fit = () => {
+      rafId = 0;
+      if (narrow()) { if (lastH !== 0) { dock.style.height = ''; lastH = 0; } return; }
+      const top = Math.max(12, grid.getBoundingClientRect().top + 12);
+      const hgt = Math.round(innerHeight - top - 12);
+      if (hgt !== lastH) { dock.style.height = hgt + 'px'; lastH = hgt; }
+    };
+    const queue = () => { if (!rafId) rafId = requestAnimationFrame(fit); };
+    addEventListener('scroll', queue, { passive: true });
+    addEventListener('resize', queue);
+    fit();
+
+    /* bottom sheet below 1100 px */
+    /* opening the sheet brings the controls the step is about (opts.anchor) into the space above it */
+    const alignAnchor = () => {
+      const el = opts.anchor && opts.anchor();
+      if (!el || !narrow() || !doc.body.classList.contains('paa-sheet-open')) return;
+      const room = innerHeight - dock.getBoundingClientRect().height;
+      const rect = el.getBoundingClientRect();
+      if (rect.top >= 0 && rect.bottom <= room) return;
+      scrollTo({ top: Math.max(0, scrollY + rect.bottom - room + 8), behavior: 'auto' });
+    };
+    const setSheet = (open) => {
+      doc.body.classList.toggle('paa-sheet-open', open);
+      r.barOpen.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (open) requestAnimationFrame(alignAnchor);
+    };
+    r.alignAnchor = () => requestAnimationFrame(alignAnchor);
+    r.barOpen.addEventListener('click', () => setSheet(!doc.body.classList.contains('paa-sheet-open')));
+    doc.addEventListener('keydown', (e) => { if (e.key === 'Escape' && narrow() && doc.body.classList.contains('paa-sheet-open') && !doc.querySelector('.modal')) { setSheet(false); r.barOpen.focus(); } });
+    r.setSheet = setSheet;
+    if ('ResizeObserver' in window) {
+      new ResizeObserver(() => {
+        const hgt = narrow() ? Math.ceil(r.bar.getBoundingClientRect().height) : 0;
+        root.style.setProperty('--paa-bar-h', hgt + 'px');
+      }).observe(r.bar);
+    }
+
+    /* phone: the toolbar collapses to Pause plus a Simulator menu */
+    if (opts.toolbar) {
+      const tb = doc.querySelector(opts.toolbar);
+      if (tb) {
+        const b = doc.createElement('button');
+        b.type = 'button'; b.className = 'btn paa-simbtn'; b.textContent = 'Simulator'; b.setAttribute('aria-expanded', 'false');
+        b.addEventListener('click', () => { const open = tb.classList.toggle('paa-open'); b.setAttribute('aria-expanded', open ? 'true' : 'false'); });
+        const pause = tb.querySelector('#btnPause');
+        if (pause) pause.after(b); else tb.prepend(b);
+      }
+    }
+    return r;
+  }
+
+  /* map cells: shape first, color second */
+  function cells(states, label) {
+    const n = states.length;
+    const done = states.filter((s) => s === 'done' || s === 'cur-done').length;
+    const skip = states.filter((s) => s === 'skip').length;
+    const spans = states.map((s) => `<span class="cell ${s === 'cur-done' ? 'cur done' : s}"></span>`).join('');
+    const text = `${done} of ${n} steps done${skip ? `, ${skip} skipped` : ''}${label ? ', ' + label : ''}`;
+    return `<span class="cells" aria-hidden="true">${spans}</span><span class="paa-sr">${h(text)}</span>`;
+  }
+
+  /* goal rows: parameter, target, now, status */
+  function goalTable(rows, caption, nowLabel) {
+    return `<div class="paa-goal"><table>
+      <thead><tr><th scope="col">${h(caption || 'Goal')}</th><th scope="col">Target</th><th scope="col" style="text-align:right">${h(nowLabel || 'Now')}</th><th scope="col" class="st"><span class="paa-sr">Status</span></th></tr></thead>
+      <tbody>${rows.map((g, i) => `<tr data-g="${i}" class="not"><th scope="row" class="p">${g.find ? `<button type="button" data-show="${i}" title="Show on device">${h(g.label)}</button>` : h(g.label)}${g.unit ? `<span class="u">${h(g.unit)}</span>` : ''}</th><td class="tg">${h(g.target)}</td><td class="now">–</td><td class="st">not yet</td></tr>`).join('')}</tbody></table></div>`;
+  }
+  function updateGoal(container, rows, ctx) {
+    let all = true;
+    rows.forEach((g, i) => {
+      const tr = container.querySelector(`tr[data-g="${i}"]`); if (!tr) return;
+      let v, ok = false;
+      try { v = g.value(ctx); ok = !!g.ok(v, ctx); } catch (e) { v = null; ok = false; }
+      all = all && ok;
+      const shown = v == null || (typeof v === 'number' && !isFinite(v)) ? '–' : typeof v === 'number' ? v.toFixed(g.dec == null ? 0 : g.dec) : String(v);
+      const now = tr.querySelector('.now'); if (now.textContent !== shown) now.textContent = shown;
+      const cls = ok ? 'met' : 'not';
+      if (!tr.classList.contains(cls)) { tr.classList.remove('met', 'not'); tr.classList.add(cls); tr.querySelector('.st').textContent = ok ? 'met' : 'not yet'; }
+    });
+    return all;
+  }
+
+  /* "Show on device": scroll the control into view and outline it (user-triggered) */
+  function ping(el) {
+    if (!el) return;
+    // first any scrolling panel the control sits in (for example the ventilator's numbers column)
+    for (let p = el.parentElement; p && p !== doc.body; p = p.parentElement) {
+      const cs = getComputedStyle(p);
+      if (/(auto|scroll)/.test(cs.overflowY) && p.scrollHeight > p.clientHeight + 4) {
+        const pr = p.getBoundingClientRect(), er = el.getBoundingClientRect();
+        if (er.top < pr.top) p.scrollTop -= pr.top - er.top + 8;
+        else if (er.bottom > pr.bottom) p.scrollTop += er.bottom - pr.bottom + 8;
+      }
+    }
+    // then the page, by the smallest amount that brings it into view (above the sheet on phones)
+    const rect = el.getBoundingClientRect();
+    const sheetTop = narrow() ? innerHeight - dock_h() : innerHeight;
+    let dy = 0;
+    if (rect.top < 8) dy = rect.top - 8;
+    else if (rect.bottom > sheetTop - 8) dy = rect.bottom - (sheetTop - 8);
+    if (dy) scrollBy({ top: dy, behavior: reduced() ? 'auto' : 'smooth' });
+    el.classList.remove('paa-ping'); void el.offsetWidth; el.classList.add('paa-ping');
+    setTimeout(() => el.classList.remove('paa-ping'), 2200);
+  }
+  function dock_h() { const d = doc.getElementById('paa-dock'); return d ? d.getBoundingClientRect().height : 0; }
+
+  window.PAADock = { shell, cells, goalTable, updateGoal, ping, esc: h, store, narrow };
+})();
+</script>
+<script>
+/* Lesson dock, Ventilation Learn: replaces renderLessonList, renderLesson and finishLesson in Learn mode only */
+if (window.CVL_VARIANT === 'learn') {
+/* Ventilation Lab Learn: lesson dock adapter (prototype, round 2).
+   Uses the lab's own LESSONS, App, H, MODES, enterStep, startLesson, lessonProgress, store and selectTab.
+   Replaces only how lessons are drawn: renderLessonList, renderLesson and finishLesson.
+   Step logic, exercise checks and the lab's own record (cvl_progress) are unchanged; the dock keeps
+   a per-step record beside it (paa_steps_cvl) so the map can say exactly what was done. */
+(function () {
+  'use strict';
+  if (typeof LESSONS === 'undefined' || typeof App === 'undefined') return;
+  const D = window.PAADock, esc = D.esc;
+  const KIND = { read: 'Explanation', demo: 'Demonstration', task: 'Guided exercise', quiz: 'Knowledge check' };
+
+  /* on phones and tablets, opening the step sheet brings the knob strip into view above it */
+  const anchor = () => { const ls = App.lesson; if (!ls) return null; const t = LESSONS[ls.i].steps[ls.step].type; return t === 'task' || t === 'demo' ? document.querySelector('#vBar') : null; };
+  const ui = D.shell({ grid: document.querySelector('.bench'), lab: 'cvl', compact: true, toolbar: '.simctl', anchor, copyLink: true });
+
+  /* ---------- where things are on the device ---------- */
+  const nv = (label) => [...document.querySelectorAll('#vNums .nv')].find((n) => (n.querySelector('.h span') || {}).textContent === label);
+  const knob = (k) => document.querySelector(`#vBar .vtile[data-k="${k}"]`);
+  const tab = (name) => document.querySelector(`#clinTabs [data-tab="${name}"]`);
+  const action = (txt) => [...document.querySelectorAll('#tp-bedside button')].find((b) => b.textContent.trim().startsWith(txt));
+  const monitor = () => document.querySelector('.mon-dev');
+  const mode = () => document.querySelector('#vModeBox');
+  const M = (a) => H.m(a);
+
+  /* ---------- goal rows for each guided exercise (mirror each step's own check) ---------- */
+  const GOALS = {
+    L1: [
+      { label: 'MVe', unit: 'L/min', target: '≥ 1.6', value: (a) => M(a).MVe, ok: (v) => v >= 1.6, dec: 2, find: () => nv('MVe') },
+      { label: 'VT/PBW', unit: 'mL/kg (VTe per kg)', target: '≤ 9', value: (a) => H.vtkg(a), ok: (v) => v <= 9, dec: 1, find: () => nv('VT/PBW') },
+      { label: 'O₂ conc.', unit: '%', target: 'unchanged', value: (a) => a.eng.set.fio2, ok: (v, a) => v === a.caseStart.settings.fio2, find: () => knob('fio2') }
+    ],
+    L2: [
+      { label: 'Mode', target: 'SIMV (PRVC)', value: (a) => MODES[a.eng.mode].name, ok: (v, a) => a.eng.mode === 'simv_prvc', find: mode },
+      { label: 'Tidal volume', unit: 'mL', target: '48 to 64', value: (a) => a.eng.set.vt, ok: (v) => v >= 48 && v <= 64, find: () => knob('vt') }
+    ],
+    L3: [
+      { label: 'Mode', target: 'PS/CPAP', value: (a) => MODES[a.eng.mode].name, ok: (v, a) => a.eng.mode === 'ps_cpap', find: mode },
+      { label: 'VT/PBW', unit: 'mL/kg (VTe per kg)', target: '5 to 8', value: (a) => M(a).VTkg, ok: (v) => v >= 5 && v <= 8, dec: 1, find: () => nv('VT/PBW') },
+      { label: 'RR', unit: 'b/min', target: 'below 45', value: (a) => M(a).RR, ok: (v) => v < 45, dec: 1, find: () => nv('RR') }
+    ],
+    L4: [
+      { label: 'Tidal volume', unit: 'mL', target: '120 to 160', value: (a) => a.eng.set.vt, ok: (v) => v >= 120 && v <= 160, find: () => knob('vt') }
+    ],
+    L5: [
+      { label: 'Mode', target: 'SIMV (PC)', value: (a) => MODES[a.eng.mode].name, ok: (v, a) => a.eng.mode === 'simv_pc', find: mode },
+      { label: 'VT/PBW', unit: 'mL/kg (VTe per kg)', target: '≥ 6', value: (a) => M(a).VTkg, ok: (v) => v >= 6, dec: 1, find: () => nv('VT/PBW') },
+      { label: 'Ppeak', unit: 'cmH₂O', target: '≤ 30', value: (a) => M(a).Ppeak, ok: (v) => v <= 30, find: () => nv('Ppeak') }
+    ],
+    L7: [
+      { label: 'ABGs obtained', target: '2 or more', value: (a) => a.abgs.length, ok: (v) => v >= 2, find: () => tab('abg') },
+      { label: 'Latest pH', target: '≥ 7.30', value: (a) => a.abgs.length ? a.abgs[a.abgs.length - 1].pH : null, ok: (v) => v != null && v >= 7.30, dec: 2, find: () => tab('abg') },
+      { label: 'Repeat gas', target: 'after your last change', value: (a) => a.abgs.length && a.abgs[a.abgs.length - 1].ct > (a.lastChangeT || 0) ? 'yes' : 'no', ok: (v) => v === 'yes', find: () => tab('abg') }
+    ],
+    L8: [
+      { label: 'SpO₂', unit: '%', target: '≥ 78', value: (a) => a.eng.g.SpO2, ok: (v) => v >= 78, find: monitor },
+      { label: 'Pmean', unit: 'cmH₂O', target: 'more than 3 below start', value: (a) => a.eng.PmeanAvg, ok: (v, a) => v < a.caseStartPmean - 3, dec: 1, find: () => nv('Pmean') }
+    ],
+    L9: [
+      { label: 'ETT / circuit', target: 'connected', value: (a) => a.eng.phys.disconnected ? 'disconnected' : 'connected', ok: (v) => v === 'connected', find: () => action('Check ETT / circuit') },
+      { label: 'Connection checked', target: 'yes', value: (a) => a.actLog.some((x) => x.id === 'connection') ? 'yes' : 'no', ok: (v) => v === 'yes', find: () => action('Check ETT / circuit') }
+    ],
+    L10: [
+      { label: 'PS above PEEP', unit: 'cmH₂O', target: '≤ 5', value: (a) => a.eng.set.ps, ok: (v) => v <= 5, find: () => knob('ps') },
+      { label: 'Time at low support', unit: 's', target: '≥ 60', value: (a) => a.sbtTime, ok: (v) => v >= 60, find: () => knob('ps') }
+    ]
+  };
+
+  /* The lab's check decides when an exercise is met, on one sample. Record the goal values at
+     that exact moment, so the table never contradicts "Goal met" (round-2 panel finding). */
+  let snapshot = null;
+  LESSONS.forEach((L) => L.steps.forEach((st) => {
+    if (st.type !== 'task' || typeof st.check !== 'function') return;
+    const orig = st.check;
+    st.check = (a) => {
+      const ok = orig(a);
+      if (ok && GOALS[L.id]) snapshot = GOALS[L.id].map((g) => { try { return g.value(a); } catch (e) { return null; } });
+      return ok;
+    };
+  }));
+
+  /* device words a demonstration can point at */
+  const LOOK = [
+    [/\bPpeak\b/, 'Ppeak', () => nv('Ppeak')], [/\bMVe\b/, 'MVe', () => nv('MVe')], [/\bVTe\b/, 'VTe', () => nv('VTe')],
+    [/\bPEEP\b/, 'PEEP', () => knob('peep')], [/respiratory rate|\brate\b/i, 'RR (set)', () => knob('rate')],
+    [/EtCO2|monitor|CVP|MAP|cardiac output/, 'Monitor', monitor], [/\bABG\b|gas\b/, 'ABG tab', () => tab('abg')],
+    [/mode box|mode\b/i, 'Mode', mode], [/Controls/, 'Controls tab', () => tab('instr')], [/Freeze|ventilator menu/, 'Ventilator menu', () => document.querySelector('#vSide')]
+  ];
+
+  /* ---------- one completion record ----------
+     A reading or demonstration step counts when you open it; an exercise when its goal is met
+     (or it shows as skipped); a question when you answer it (the answer is kept). */
+  const REC_KEY = 'paa_steps_cvl';
+  const rec = () => D.store.get(REC_KEY, {});
+  function put(id, j, val) { const r = rec(); r[id] = r[id] || {}; const old = r[id][j] || {}; if (old.s === 'done' && val.s === 'skip') return; r[id][j] = Object.assign(old, val); D.store.set(REC_KEY, r); }
+  function states(i) {
+    const L = LESSONS[i], r = rec()[L.id], pr = lessonProgress()[L.id], ls = App.lesson;
+    return L.steps.map((s, j) => {
+      let st = r ? ((r[j] && r[j].s) || 'todo') : (pr && pr.done ? 'done' : 'todo'); // older records: trust the lab's own "done"
+      if (ls && ls.i === i && j === ls.step && ahead == null) st = st === 'done' ? 'cur-done' : 'cur';
+      return st;
+    });
+  }
+  function facts(i) {
+    const L = LESSONS[i], r = rec()[L.id] || {};
+    const st = states(i).map((s) => s.replace('cur-', '').replace('cur', 'todo'));
+    const done = st.filter((s) => s === 'done').length, skip = st.filter((s) => s === 'skip').length;
+    const qs = L.steps.map((s, j) => [s, j]).filter(([s]) => s.type === 'quiz');
+    const right = qs.filter(([s, j]) => r[j] && r[j].a === s.a).length;
+    return { n: L.steps.length, done, skip, todo: L.steps.length - done - skip, qs: qs.length, right };
+  }
+  function summary(i) {
+    if (App.lesson && App.lesson.i === i && ahead == null) return `Step ${App.lesson.step + 1} of ${LESSONS[i].steps.length}`;
+    const f = facts(i);
+    if (!f.done && !f.skip) return '';
+    const score = f.qs ? `, ${f.right} of ${f.qs} correct` : '';
+    if (f.done === f.n) return `Done${score}`;
+    return `${f.done} of ${f.n} steps${f.skip ? `, ${f.skip} skipped` : ''}${score}`;
+  }
+
+  /* ---------- module map ---------- */
+  let ahead = null;
+  function renderMap(openIt) {
+    ui.mapList.innerHTML = LESSONS.map((L, i) => {
+      const cur = (App.lesson && App.lesson.i === i && ahead == null) || ahead === i;
+      return `<li><button type="button" class="paa-row" data-l="${i}" ${cur ? 'aria-current="true"' : ''}><span class="n">${i + 1}</span><span class="t">${esc(L.title)}</span>${D.cells(states(i))}<span class="sum">${esc(summary(i))}</span></button></li>`;
+    }).join('');
+    ui.mapList.querySelectorAll('[data-l]').forEach((b) => b.addEventListener('click', () => {
+      const i = +b.dataset.l;
+      if (App.lesson && App.lesson.i === i && ahead == null) { ui.map.open = false; return; }
+      ahead = i; renderAhead();
+    }));
+    const i = ahead != null ? ahead : App.lesson ? App.lesson.i : null;
+    ui.mapSum.innerHTML = i == null ? 'All modules' : `All modules ${D.cells(states(i), 'Module ' + (i + 1))}`;
+    if (openIt != null) ui.map.open = openIt;
+  }
+
+  function setHead(pos, title) { ui.pos.textContent = pos; ui.title.textContent = title; }
+  function listMode(on) { ui.dock.classList.toggle('paa-listmode', on); ui.note.hidden = !on; ui.setCopy(on ? null : (App.lesson || ahead != null) ? `#m${(ahead != null ? ahead : App.lesson.i) + 1}` : null); }
+  function focusStep() {
+    const t = ui.body.querySelector('.paa-kind'); ui.body.scrollTop = 0;
+    if (!t) return;
+    t.setAttribute('tabindex', '-1');
+    t.focus({ preventScroll: true });
+    // the lab's case setup can redraw parts of the page right after; keep focus in the lesson
+    setTimeout(() => { if (document.activeElement === document.body || !document.activeElement) t.focus({ preventScroll: true }); }, 120);
+  }
+  function bar(pos, what, next) {
+    ui.barPos.textContent = pos; ui.barWhat.innerHTML = what;
+    if (next) { ui.barNext.hidden = false; ui.barNext.textContent = next.label; ui.barNext.disabled = !!next.disabled; ui.barNext.onclick = next.go; }
+    else ui.barNext.hidden = true;
+    ui.railStep.textContent = App.lesson ? `${App.lesson.step + 1}/${LESSONS[App.lesson.i].steps.length}` : '';
+    if (next) { ui.railNext.hidden = false; ui.railNext.disabled = !!next.disabled; ui.railNext.onclick = next.go; } else ui.railNext.hidden = true;
+  }
+  function saveWhere() {
+    const ls = App.lesson;
+    if (ls) { D.store.set('paa_resume_cvl', { i: ls.i, step: ls.step }); history.replaceState(null, '', `#m${ls.i + 1}-s${ls.step + 1}`); }
+    else if (started) history.replaceState(null, '', location.pathname);
+  }
+
+  /* ---------- module list (first visit) ---------- */
+  renderLessonList = function () {
+    ahead = null; App.lesson = null; saveWhere();
+    setHead('Learn', 'Choose a module');
+    listMode(true);
+    ui.note.textContent = 'Ten modules. Each one explains a topic, shows it on the ventilator, gives you an exercise and ends with a knowledge check. Open any module to read it first. ' + (/github\.io$/.test(location.hostname) ? 'Progress saves in this browser.' : 'Progress saves to your account.');
+    ui.body.innerHTML = ''; ui.foot.innerHTML = '';
+    renderMap(true);
+    bar('Learn', 'Choose a module', { label: 'Modules', go: () => ui.setSheet(true) });
+    ui.railGoal.textContent = ''; ui.railGoal.className = 'r-goal';
+  };
+
+  /* ---------- read ahead without losing your place; any step can be opened ---------- */
+  function preview(s) {
+    if (s.type === 'quiz') return s.q;
+    const d = document.createElement('div'); d.innerHTML = s.html || '';
+    const t = d.textContent.replace(/^\s*Exercise\.\s*/, '').trim();
+    return t.length > 160 ? t.slice(0, 157).trimEnd() + '…' : t;
+  }
+  function renderAhead() {
+    listMode(false);
+    const L = LESSONS[ahead], i = ahead;
+    setHead(`Module ${i + 1} of ${LESSONS.length}`, L.title);
+    const st = states(i);
+    const back = App.lesson ? `<p class="paa-ahead-note" role="status"><span>Reading ahead</span><button type="button" class="paa-btn" id="paaBack">Back to step ${App.lesson.step + 1} of Module ${App.lesson.i + 1}</button></p>` : '';
+    ui.body.innerHTML = `${back}<p class="paa-kind">${L.steps.length} steps. Open any step.</p><ol class="paa-steplist">${L.steps.map((s, j) => `<li><span class="n">${j + 1}</span><button type="button" class="paa-steplink" data-go="${j}"><span class="k">${KIND[s.type]}${st[j] === 'done' ? ', done' : st[j] === 'skip' ? ', skipped' : ''}</span>${esc(preview(s))}</button></li>`).join('')}</ol>`;
+    ui.foot.innerHTML = `<span class="spacer"></span><button type="button" class="paa-btn primary" id="paaStart">${App.lesson ? 'Start this module instead' : 'Start module'}</button>`;
+    document.getElementById('paaStart').onclick = () => { ahead = null; goTo(i, 0); };
+    ui.body.querySelectorAll('[data-go]').forEach((b) => b.onclick = () => { ahead = null; goTo(i, +b.dataset.go); });
+    const b = document.getElementById('paaBack'); if (b) b.onclick = () => { ahead = null; renderLesson(); };
+    renderMap(false); focusStep();
+    bar(`Module ${i + 1}: ${L.title}`, 'Reading ahead', { label: 'Start', go: () => { ahead = null; goTo(i, 0); } });
+  }
+
+  /* ---------- the current step ---------- */
+  let goalRows = null;
+  let jumping = false; // while opening at a given step, don't draw (or count) step 1 on the way
+  renderLesson = function () {
+    if (jumping) return;
+    const ls = App.lesson; if (!ls) return renderLessonList();
+    ahead = null; listMode(false);
+    const L = LESSONS[ls.i], st = L.steps[ls.step];
+    const key = `${ls.i}:${ls.step}`, stepChanged = ui.lastKey !== key; ui.lastKey = key;
+    if (stepChanged) snapshot = null;
+    enterStep();
+    if (st.type === 'read' || st.type === 'demo') put(L.id, ls.step, { s: 'done' });
+    if (st.type === 'task' && ls.taskDone) put(L.id, ls.step, { s: 'done' });
+    const last = ls.step === L.steps.length - 1;
+    const canNext = st.type === 'quiz' ? ls.answers[ls.step] != null : st.type === 'task' ? ls.taskDone : true;
+    setHead(`Module ${ls.i + 1} of ${LESSONS.length}`, L.title);
+    ui.setCopy(`#m${ls.i + 1}`);
+    const kind = `<p class="paa-kind">${KIND[st.type]}, step ${ls.step + 1} of ${L.steps.length}</p>`;
+    let inner = '';
+    goalRows = null;
+    if (st.type === 'read') inner = st.html;
+    if (st.type === 'demo') {
+      const txt = (st.html || '').replace(/<[^>]+>/g, ' ');
+      const looks = LOOK.filter(([re]) => re.test(txt)).slice(0, 5);
+      inner = st.html + (looks.length ? `<ul class="paa-look" aria-label="Look at">${looks.map(([, name], k) => `<li><span class="what">${esc(name)}</span><button type="button" class="paa-btn" data-look="${k}">Show on device</button></li>`).join('')}</ul>` : '') +
+        `<div class="paa-inline"><button type="button" class="paa-btn" id="paaReload">Reload demonstration</button></div>`;
+      ui.looks = looks;
+    }
+    if (st.type === 'task') {
+      goalRows = GOALS[L.id] || null;
+      inner = st.html.replace(/<b>Exercise\.<\/b>\s*/, '') +
+        (goalRows ? D.goalTable(goalRows, 'Goal', ls.taskDone ? 'At goal' : 'Now') : '') +
+        `<div class="paa-status ${ls.taskDone ? 'met' : ''}" id="paaTaskSt" role="status">${ls.taskDone ? `<b>Goal met.</b> ${esc(st.success)}` : 'The simulator checks your numbers with each breath. Next step unlocks when every row is met.'}</div>` +
+        `<details class="paa-hint"><summary>Show hint</summary><p>${esc(st.hint)}</p></details>` +
+        `<div class="paa-inline"><button type="button" class="paa-btn" id="paaReload">Restart exercise</button></div>`;
+    }
+    if (st.type === 'quiz') {
+      const ans = ls.answers[ls.step];
+      inner = `<p class="paa-stem">${esc(st.q)}</p><ul class="paa-opts">${st.o.map((o, j) => {
+        const cls = ans == null ? '' : j === st.a ? 'right' : j === ans ? 'wrong' : '';
+        const tag = ans == null ? '' : j === st.a ? (j === ans ? 'Your answer, correct' : 'Correct answer') : j === ans ? 'Your answer' : '';
+        return `<li><button type="button" class="paa-opt ${cls}" data-o="${j}" ${ans != null ? 'disabled' : ''}><span class="k">${'ABCDEF'[j]}</span><span>${esc(o)}${tag ? `<span class="tag">${tag}</span>` : ''}</span></button></li>`;
+      }).join('')}</ul>` +
+        (ans != null ? `<div class="paa-feedback ${ans === st.a ? 'right' : ''}" id="paaFb" tabindex="-1"><b>${ans === st.a ? 'Correct.' : 'Not quite.'}</b>${esc(st.e)}</div>` : '');
+    }
+    ui.body.innerHTML = kind + inner;
+
+    const why = st.type === 'task' && !ls.taskDone ? 'Meet the goal or skip the exercise to go on.' : st.type === 'quiz' && ls.answers[ls.step] == null ? 'Answer to see the explanation and go on.' : '';
+    ui.foot.innerHTML = `${why ? `<p class="why">${why}</p>` : ''}<button type="button" class="paa-btn" id="paaPrev" ${ls.step === 0 ? 'disabled' : ''}>Previous step</button><span class="spacer"></span>${st.type === 'task' && !ls.taskDone ? '<button type="button" class="paa-btn" id="paaSkip">Skip exercise</button>' : ''}<button type="button" class="paa-btn primary" id="paaNext" ${canNext ? '' : 'disabled'}>${last ? 'Finish module' : 'Next step'}</button>`;
+
+    const next = () => { if (last) finishLesson(); else { ls.step++; renderLesson(); } };
+    document.getElementById('paaPrev').onclick = () => { ls.step--; renderLesson(); };
+    document.getElementById('paaNext').onclick = next;
+    const sk = document.getElementById('paaSkip'); if (sk) sk.onclick = () => { ls.skipped = (ls.skipped || 0) + 1; put(L.id, ls.step, { s: 'skip' }); if (last) finishLesson(); else { ls.step++; renderLesson(); } };
+    const rl = document.getElementById('paaReload'); if (rl) rl.onclick = () => { ls.entered = -1; renderLesson(); };
+    ui.body.querySelectorAll('[data-look]').forEach((b) => b.onclick = () => D.ping(ui.looks[+b.dataset.look][2]()));
+    ui.body.querySelectorAll('[data-show]').forEach((b) => b.onclick = () => D.ping(goalRows[+b.dataset.show].find()));
+    ui.body.querySelectorAll('[data-o]').forEach((b) => b.onclick = () => {
+      const a = +b.dataset.o; ls.answers[ls.step] = a; put(L.id, ls.step, { s: 'done', a });
+      renderLesson();
+      const fb = document.getElementById('paaFb'); if (fb) { fb.scrollIntoView({ block: 'nearest' }); fb.focus({ preventScroll: true }); }
+    });
+    if (goalRows) tick();
+    bar(`Module ${ls.i + 1}: ${L.title}`, `Step ${ls.step + 1} of ${L.steps.length}. ${st.type === 'task' ? goalLine() : esc(KIND[st.type])}`, { label: last ? 'Finish' : 'Next', disabled: !canNext, go: next });
+    renderMap(false); saveWhere();
+    if (stepChanged) { focusStep(); ui.alignAnchor(); }
+  };
+
+  function goalLine() {
+    if (!goalRows) return 'Guided exercise';
+    if (App.lesson.taskDone) return '<b>Goal met</b>';
+    const rows = [...ui.body.querySelectorAll('.paa-goal tbody tr')];
+    const k = Math.max(0, rows.findIndex((tr) => !tr.classList.contains('met')));
+    const g = goalRows[k];
+    let v = null; try { v = g.value(App); } catch (e) { v = null; }
+    const shown = v == null ? '–' : typeof v === 'number' ? v.toFixed(g.dec || 0) : v;
+    return `${esc(g.label)} ${esc(g.target)}: <span class="num">${esc(shown)}</span>, not yet`;
+  }
+  function tick() {
+    const ls = App.lesson; if (!ls || !goalRows) return;
+    const st = LESSONS[ls.i].steps[ls.step]; if (st.type !== 'task') return;
+    let all;
+    if (ls.taskDone) {
+      // frozen at the values that met the goal
+      const snap = snapshot;
+      all = D.updateGoal(ui.body, goalRows.map((g, i) => Object.assign({}, g, { value: () => (snap ? snap[i] : g.value(App)), ok: () => true })), App);
+    } else {
+      all = D.updateGoal(ui.body, goalRows, App);
+      const s = document.getElementById('paaTaskSt');
+      if (s) s.textContent = all ? 'Every row is met. Confirming with the next breath.' : 'The simulator checks your numbers with each breath. Next step unlocks when every row is met.';
+    }
+    ui.railGoal.textContent = ls.taskDone ? 'Goal met' : all ? 'Confirming' : 'Goal not yet met';
+    ui.railGoal.className = 'r-goal' + (ls.taskDone ? ' met' : '');
+    if (D.narrow()) ui.barWhat.innerHTML = `Step ${ls.step + 1} of ${LESSONS[ls.i].steps.length}. ${goalLine()}`;
+  }
+  setInterval(tick, 500);
+
+  /* ---------- finished ---------- */
+  finishLesson = function () {
+    listMode(false);
+    const ls = App.lesson, L = LESSONS[ls.i];
+    const qs = L.steps.map((s, j) => [s, j]).filter(([s]) => s.type === 'quiz');
+    const right = qs.filter(([s, j]) => ls.answers[j] === s.a).length;
+    const score = qs.length ? Math.round(right / qs.length * 100) : null;
+    const pr = lessonProgress(); pr[L.id] = { done: true, score, date: new Date().toISOString().slice(0, 10), skipped: ls.skipped || 0 }; store.set('cvl_progress', pr);
+    const i = ls.i; App.lesson = null; D.store.set('paa_resume_cvl', null); history.replaceState(null, '', location.pathname);
+    setHead(`Module ${i + 1} of ${LESSONS.length}`, L.title);
+    const f = facts(i);
+    ui.body.innerHTML = `<p class="paa-kind" role="status">${f.done === f.n ? 'Module done' : 'End of module'}</p>
+      <dl class="paa-facts"><dt>${f.done} of ${f.n}</dt><dd>steps done</dd>${f.skip ? `<dt>${f.skip}</dt><dd>exercise skipped</dd>` : ''}${f.todo ? `<dt>${f.todo}</dt><dd>steps not opened</dd>` : ''}<dt>${f.right} of ${f.qs}</dt><dd>knowledge checks correct</dd></dl>
+      ${f.done < f.n ? `<p>Open the steps you missed from the module map, or repeat the module.</p>` : ''}`;
+    ui.foot.innerHTML = `<button type="button" class="paa-btn" id="paaRep">Repeat module</button><span class="spacer"></span>${i < LESSONS.length - 1 ? `<button type="button" class="paa-btn primary" id="paaNextMod">Module ${i + 2}</button>` : '<button type="button" class="paa-btn primary" id="paaAll">All modules</button>'}`;
+    document.getElementById('paaRep').onclick = () => goTo(i, 0);
+    const nm = document.getElementById('paaNextMod'); if (nm) nm.onclick = () => goTo(i + 1, 0);
+    const al = document.getElementById('paaAll'); if (al) al.onclick = () => renderLessonList();
+    renderMap(false); focusStep();
+    bar(`Module ${i + 1}: ${L.title}`, `${f.done === f.n ? 'Module done' : 'End of module'}. ${f.right} of ${f.qs} correct`, i < LESSONS.length - 1 ? { label: `Module ${i + 2}`, go: () => goTo(i + 1, 0) } : null);
+  };
+
+  /* ---------- open at an address (learn.html#m3-s2); answers come back from the record ---------- */
+  function goTo(i, step) {
+    jumping = true;
+    try { startLesson(i); } finally { jumping = false; }
+    const ls = App.lesson; if (!ls) return;
+    const r = rec()[LESSONS[i].id] || {};
+    Object.keys(r).forEach((j) => { if (r[j].a != null) ls.answers[+j] = r[j].a; });
+    if (step > 0) { ls.step = Math.min(step, LESSONS[i].steps.length - 1); renderLesson(); }
+    else renderLesson();
+  }
+  const firstHash = location.hash; // read before the lab's own startup redraws the list
+  let started = false;
+  function fromHash(hash) {
+    const m = /^#m(\d+)(?:-s(\d+))?$/.exec(typeof hash === 'string' ? hash : location.hash);
+    if (!m) return false;
+    const i = +m[1] - 1, s = m[2] ? +m[2] - 1 : 0;
+    if (!LESSONS[i]) return false;
+    goTo(i, s); return true;
+  }
+
+  /* start: the Lessons tab is no longer needed; Bedside is the default tab.
+     First visit: the module list. Coming back: straight to your step (same as the Waveform Lab). */
+  const start = () => {
+    try { selectTab('bedside'); } catch (e) { /* older page */ }
+    started = true;
+    window.addEventListener('hashchange', () => fromHash());
+    const res = D.store.get('paa_resume_cvl', null);
+    if (fromHash(firstHash)) return;
+    if (res && LESSONS[res.i]) goTo(res.i, res.step);
+    else renderLessonList();
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(start, 0));
+  else start();
+})();
+}
+</script>
+<!-- /paa-lesson-dock -->
 </body>
 </html>
